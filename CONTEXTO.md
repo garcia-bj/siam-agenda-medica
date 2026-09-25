@@ -65,7 +65,7 @@ seleccionar fecha → agendar → ver la cita en la lista → cancelar.
 
 | Capa | Tecnología |
 | --- | --- |
-| Gestor de paquetes | **pnpm 12** (workspaces), Node 22 o superior |
+| Gestor de paquetes | **pnpm 12** (workspaces), **Node 22.12 o superior** (lo exige Prisma 7) |
 | Backend | NestJS + TypeScript |
 | Validación backend | `class-validator` + `class-transformer` (DTOs) |
 | Base de datos | SQLite + Prisma 7 (adaptador `better-sqlite3`) |
@@ -523,7 +523,7 @@ El `.env` lo carga Node directamente (`nest start --env-file .env`); no se usa `
 ### Paso 0 · Requisitos (cada integrante)
 
 ```bash
-node -v                      # 22 o superior
+node -v                      # 22.12 o superior (Prisma 7 no instala con menos)
 npm i -g pnpm@12             # corepack no instala pnpm 12
 pnpm -v                      # 12.x
 git config --global user.name "Tu Nombre"

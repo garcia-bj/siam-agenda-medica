@@ -62,8 +62,15 @@ describe('Estructura base (e2e)', () => {
       .send({ name: 'A', email: 'no-es-email', extra: 1 })
       .expect(400);
 
-    expect(res.body).toMatchObject({ statusCode: 400, code: 'VALIDATION_ERROR' });
-    expect(res.body.details.map((d: { field: string }) => d.field).sort()).toEqual(['email', 'extra', 'name']);
+    expect(res.body).toMatchObject({ statusCode: 400, code: 'VALIDATION_ERROR', message: 'Datos inválidos' });
+    expect(res.body.details).toEqual(
+      expect.arrayContaining([
+        { field: 'extra', message: 'Campo no permitido' },
+        expect.objectContaining({ field: 'name' }),
+        expect.objectContaining({ field: 'email' }),
+      ]),
+    );
+    expect(res.body.details).toHaveLength(3);
   });
 
   it('un JSON mal formado responde 400 VALIDATION_ERROR', () => {
@@ -81,10 +88,17 @@ describe('Estructura base (e2e)', () => {
       .expect(500, { statusCode: 500, code: 'INTERNAL_ERROR', message: 'Error interno del servidor', details: [] });
   });
 
-  it('permite CORS desde el front en localhost:3000', () => {
+  it('permite CORS desde el front en localhost:3000 y expone Content-Disposition', () => {
     return request(app.getHttpServer())
       .get('/api/health')
       .set('Origin', 'http://localhost:3000')
-      .expect('Access-Control-Allow-Origin', 'http://localhost:3000');
+      .expect('Access-Control-Allow-Origin', 'http://localhost:3000')
+      .expect('Access-Control-Expose-Headers', 'Content-Disposition');
+  });
+
+  it('no autoriza por CORS a otro origen', async () => {
+    const res = await request(app.getHttpServer()).get('/api/health').set('Origin', 'http://otro-sitio.com');
+
+    expect(res.headers['access-control-allow-origin']).not.toBe('http://otro-sitio.com');
   });
 });
