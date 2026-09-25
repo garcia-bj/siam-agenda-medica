@@ -2,7 +2,6 @@ import { Body, Controller, Get, INestApplication, Logger, Post } from '@nestjs/c
 import { Test } from '@nestjs/testing';
 import { IsEmail, IsString, Length } from 'class-validator';
 import request from 'supertest';
-import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module.js';
 import { setupApp } from './../src/setup-app.js';
 
@@ -29,7 +28,7 @@ class ProbeController {
 }
 
 describe('Estructura base (e2e)', () => {
-  let app: INestApplication<App>;
+  let app: INestApplication;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
