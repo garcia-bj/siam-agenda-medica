@@ -1,12 +1,40 @@
+# dependencias
 node_modules/
+.pnpm-store/
+
+# builds
 dist/
 .next/
-.env
+out/
+build/
+*.tsbuildinfo
+next-env.d.ts
+
+# entorno: solo se sube .env.example
+.env*
+!.env.example
+
+# base de datos local
 *.db
 *.db-journal
 *.db-wal
 *.db-shm
+
+# tests
 coverage/
 playwright-report/
 test-results/
+blob-report/
+
+# logs
+*.log
+
+# sistema y editores
 .DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# material de la evaluación (el repo es público)
+docs/PRD*.pdf
