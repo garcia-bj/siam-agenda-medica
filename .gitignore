@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.next/
+.env
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+coverage/
+playwright-report/
+test-results/
+.DS_Store
