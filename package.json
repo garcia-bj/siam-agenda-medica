@@ -8,5 +8,5 @@
     "lint": "pnpm -r lint",
     "test": "pnpm --filter backend test"
   },
-  "packageManager": "pnpm@10.26.0"
+  "packageManager": "pnpm@12.6.0"
 }
