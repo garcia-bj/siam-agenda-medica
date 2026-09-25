@@ -38,3 +38,6 @@ Thumbs.db
 
 # material de la evaluación (el repo es público)
 docs/PRD*.pdf
+
+# cliente generado por Prisma (pnpm prisma generate)
+backend/src/generated/
