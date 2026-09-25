@@ -476,6 +476,10 @@ import { SPECIALTIES } from '../common/constants/specialties.js';
 
 Sin la extensión compila en el editor pero falla al arrancar con `ERR_MODULE_NOT_FOUND`. Los `nest g` ya la ponen solos.
 
+### Variables de entorno del backend
+
+El `.env` lo carga Node directamente (`nest start --env-file .env`); no se usa `@nestjs/config`. En Docker las variables llegan por `environment` del compose, sin archivo.
+
 ### Qué va y qué no en el repositorio
 
 | Sí se sube | No se sube (lo cubre `.gitignore`) |
@@ -656,6 +660,8 @@ Abrir el PR `chore/setup → develop` en GitHub y pedir la aprobación del Backe
 **Probar:**
 
 ```bash
+cp backend/.env.example backend/.env    # solo la primera vez
+cp frontend/.env.example frontend/.env  # solo la primera vez
 pnpm dev          # backend en :3001 y frontend en :3000
 ```
 
