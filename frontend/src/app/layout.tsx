@@ -3,6 +3,7 @@ import { Fraunces, Instrument_Sans } from 'next/font/google';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Toaster } from 'sonner';
+import NavPills from '@/components/NavPills';
 import Providers from './providers';
 import './globals.css';
 
@@ -29,14 +30,10 @@ function Header() {
     <header className="site-header">
       <div className="header-container">
         <Link href="/" className="brand">
-          <Image src="/icon.svg" alt="" width={32} height={32} />
+          <Image src="/logo.svg" alt="" width={32} height={32} />
           <span>SIAM / <strong>Agenda Médica</strong></span>
         </Link>
-        <nav className="nav-pills">
-          <Link href="/agendar" className="nav-pill" aria-current="page">Agendar cita</Link>
-          <Link href="/citas" className="nav-pill">Citas</Link>
-          <Link href="/" className="nav-pill">Dashboard</Link>
-        </nav>
+        <NavPills />
       </div>
     </header>
   );

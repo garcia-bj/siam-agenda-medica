@@ -35,8 +35,9 @@ export async function apiFetch<T>(
         ...options.headers,
       },
     });
-  } catch (error: any) {
-    throw new ApiRequestError(500, 'INTERNAL_ERROR', error.message ?? 'Network error', []);
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : 'No se pudo conectar con el servidor';
+    throw new ApiRequestError(500, 'INTERNAL_ERROR', msg, []);
   }
 
   if (!res.ok) {

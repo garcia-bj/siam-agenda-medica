@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 
 interface ModalProps {
   open: boolean;
@@ -11,6 +11,7 @@ interface ModalProps {
 
 export default function Modal({ open, onClose, title, children }: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -32,22 +33,17 @@ export default function Modal({ open, onClose, title, children }: ModalProps) {
       onClose();
     };
 
+    // Close only when clicking the <dialog> backdrop itself (e.target === dialog),
+    // not when events come from keyboard (clientX/Y = 0) or from inside content.
     const handleClick = (e: MouseEvent) => {
-      const rect = dialog.getBoundingClientRect();
-      const inDialog =
-        rect.top <= e.clientY &&
-        e.clientY <= rect.top + rect.height &&
-        rect.left <= e.clientX &&
-        e.clientX <= rect.left + rect.width;
-      
-      if (!inDialog) {
+      if (e.target === dialog) {
         onClose();
       }
     };
 
     dialog.addEventListener('cancel', handleCancel);
     dialog.addEventListener('click', handleClick);
-    
+
     return () => {
       dialog.removeEventListener('cancel', handleCancel);
       dialog.removeEventListener('click', handleClick);
@@ -58,10 +54,10 @@ export default function Modal({ open, onClose, title, children }: ModalProps) {
     <dialog
       ref={dialogRef}
       className="modal"
-      aria-labelledby="modal-title"
+      aria-labelledby={titleId}
     >
       <div className="modal-content">
-        <h2 id="modal-title" className="sr-only">{title}</h2>
+        <h2 id={titleId} className="sr-only">{title}</h2>
         {children}
       </div>
     </dialog>

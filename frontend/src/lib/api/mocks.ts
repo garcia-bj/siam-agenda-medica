@@ -1,6 +1,5 @@
 import type {
   Appointment,
-  AppointmentsResponse,
   AvailabilityResponse,
   Slot,
   Specialty,
@@ -15,6 +14,13 @@ const CLINIC_SPECIALTIES: Specialty[] = [
   'CARDIOLOGIA',
   'DERMATOLOGIA',
 ];
+
+const SPECIALTY_LABELS: Record<Specialty, string> = {
+  MEDICINA_GENERAL: 'Medicina General',
+  PEDIATRIA: 'Pediatría',
+  CARDIOLOGIA: 'Cardiología',
+  DERMATOLOGIA: 'Dermatología',
+};
 
 const HOURS = [
   '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
@@ -37,8 +43,8 @@ function nextHalf(hour: string): string {
   return `${String(h).padStart(2, '0')}:30`;
 }
 
-// In-memory state
-let appointments: Appointment[] = [
+// In-memory state — const because the reference never changes, only the contents
+const appointments: Appointment[] = [
   {
     id: randomId(),
     patientName: 'Carlos Méndez',
@@ -125,7 +131,7 @@ export async function handleMock<T>(path: string, options: RequestInit): Promise
   if (url.pathname === '/appointments' && method === 'POST') {
     const body = JSON.parse(options.body as string) as CreateAppointmentDto;
     if (checkSlotTaken(body.specialty, body.startTime)) {
-      throw new ApiRequestError(409, 'SLOT_TAKEN', `El horario ya está ocupado para ${body.specialty}`, []);
+      throw new ApiRequestError(409, 'SLOT_TAKEN', `El horario ya está ocupado para ${SPECIALTY_LABELS[body.specialty]}`, []);
     }
     const endHour = nextHalf(body.startTime.substring(11, 16));
     const newAppt: Appointment = {
@@ -144,13 +150,13 @@ export async function handleMock<T>(path: string, options: RequestInit): Promise
     const id = url.pathname.split('/')[2];
     const body = JSON.parse(options.body as string) as UpdateAppointmentDto;
     const idx = appointments.findIndex(a => a.id === id);
-    if (idx === -1) throw new ApiRequestError(404, 'NOT_FOUND', 'Not found', []);
+    if (idx === -1) throw new ApiRequestError(404, 'NOT_FOUND', 'La cita no existe', []);
     
     const appt = appointments[idx];
-    if (appt.status === 'CANCELLED') throw new ApiRequestError(409, 'ALREADY_CANCELLED', 'Already cancelled', []);
+    if (appt.status === 'CANCELLED') throw new ApiRequestError(409, 'ALREADY_CANCELLED', 'La cita ya está cancelada', []);
     
     if (checkSlotTaken(appt.specialty, body.startTime, id)) {
-      throw new ApiRequestError(409, 'SLOT_TAKEN', `El horario ya está ocupado para ${appt.specialty}`, []);
+      throw new ApiRequestError(409, 'SLOT_TAKEN', `El horario ya está ocupado para ${SPECIALTY_LABELS[appt.specialty]}`, []);
     }
     
     const endHour = nextHalf(body.startTime.substring(11, 16));
@@ -165,9 +171,9 @@ export async function handleMock<T>(path: string, options: RequestInit): Promise
   if (url.pathname.startsWith('/appointments/') && method === 'DELETE') {
     const id = url.pathname.split('/')[2];
     const idx = appointments.findIndex(a => a.id === id);
-    if (idx === -1) throw new ApiRequestError(404, 'NOT_FOUND', 'Not found', []);
+    if (idx === -1) throw new ApiRequestError(404, 'NOT_FOUND', 'La cita no existe', []);
     if (appointments[idx].status === 'CANCELLED') {
-      throw new ApiRequestError(409, 'ALREADY_CANCELLED', 'Cita ya cancelada', []);
+      throw new ApiRequestError(409, 'ALREADY_CANCELLED', 'La cita ya está cancelada', []);
     }
     appointments[idx].status = 'CANCELLED';
     appointments[idx].cancelledAt = new Date().toISOString();
