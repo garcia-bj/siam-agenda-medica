@@ -4,9 +4,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const NAV = [
-  { href: '/', label: 'Dashboard' },
-  { href: '/agendar', label: 'Agendar cita' },
+  { href: '/', label: 'Agendar cita' },
   { href: '/citas', label: 'Citas' },
+  { href: '/dashboard', label: 'Dashboard' },
 ];
 
 export default function NavPills() {
