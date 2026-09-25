@@ -68,7 +68,7 @@ seleccionar fecha → agendar → ver la cita en la lista → cancelar.
 | Gestor de paquetes | **pnpm 12** (workspaces), Node 22 o superior |
 | Backend | NestJS + TypeScript |
 | Validación backend | `class-validator` + `class-transformer` (DTOs) |
-| Base de datos | SQLite + Prisma |
+| Base de datos | SQLite + Prisma 7 (adaptador `better-sqlite3`) |
 | Frontend | Next.js (App Router) + React + TypeScript |
 | Estilos | Tailwind CSS con el tema de los mockups |
 | Datos en el front | TanStack Query |
@@ -90,6 +90,7 @@ Versiones fijadas en el PR-01 (la última estable compatible de cada una):
 | ESLint (front) | 9 | Los plugins de `eslint-config-next` todavía no soportan ESLint 10 |
 | Vitest | 5.0 | Alias de tsconfig con `resolve.tsconfigPaths` de Vite (sin plugin) |
 | Tailwind CSS | 4.3 | |
+| Prisma | 7.10 | npm marca `latest` a la 8.0-rc: se fija `~7.10.0` |
 
 No se usan las rutas API de Next.js: el backend es un servicio separado. No hay CI/CD en este proyecto.
 
@@ -168,12 +169,14 @@ SQLite es la única pieza que limita a una instancia. Para este alcance está bi
 
 ```prisma
 generator client {
-  provider = "prisma-client-js"
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
 }
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
 }
 
 model Appointment {
@@ -192,6 +195,8 @@ model Appointment {
   @@index([specialty, startTime])
 }
 ```
+
+En Prisma 7 la URL de la base no va en el schema: está en `backend/prisma.config.ts`, que también define la carpeta de migraciones y el seed (`tsx prisma/seed.ts`). El cliente se genera en `src/generated/prisma` (no se sube; lo crea el `postinstall` con `prisma generate`) y se conecta con el adaptador `@prisma/adapter-better-sqlite3`.
 
 Índice parcial (se agrega a mano en el `migration.sql`, porque Prisma no lo genera):
 
@@ -317,7 +322,8 @@ backend/
 ├── prisma/
 │   ├── schema.prisma
 │   ├── migrations/
-│   └── seed.ts
+│   └── seed.ts                       ← ~45 citas: semana actual + 2 siguientes
+├── prisma.config.ts                  ← URL de la base, migraciones y seed
 ├── src/
 │   ├── main.ts                       ← prefijo /api, ValidationPipe, CORS, puerto 3001
 │   ├── app.module.ts
@@ -662,6 +668,8 @@ Abrir el PR `chore/setup → develop` en GitHub y pedir la aprobación del Backe
 ```bash
 cp backend/.env.example backend/.env    # solo la primera vez
 cp frontend/.env.example frontend/.env  # solo la primera vez
+pnpm --filter backend exec prisma migrate dev   # crea backend/siam.db con las migraciones
+pnpm --filter backend exec prisma db seed       # datos de ejemplo
 pnpm dev          # backend en :3001 y frontend en :3000
 ```
 
