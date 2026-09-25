@@ -9,7 +9,7 @@
 | Tablero Trello | https://trello.com/b/zHXLJoHG/siam-agenda-m%C3%A9dica |
 | Plan de trabajo | https://claude.ai/code/artifact/9f5c21fd-d806-48c7-8252-3237f507c48a |
 | Mockups | https://claude.ai/artifact/NvCGQnsF9mETr4xGdHvgT9 |
-| PRD | `docs/PRD_Evaluacion.pdf` |
+| PRD | Fuera del repo (es público). Se comparte por el grupo del equipo |
 
 ---
 
@@ -323,8 +323,7 @@ siam-agenda-medica/
 ├── frontend/
 ├── e2e/                    ← Playwright (PR-17)
 ├── docs/
-│   ├── api.md              ← contrato de la API (PR-02)
-│   └── PRD_Evaluacion.pdf
+│   └── api.md              ← contrato de la API (PR-02)
 ├── .github/
 │   ├── pull_request_template.md
 │   └── CODEOWNERS
@@ -500,7 +499,7 @@ Un commit por paso lógico, varias veces al día. Nada de "cambios" o "wip".
 | `package.json` y **un solo** `pnpm-lock.yaml` en la raíz | Builds: `dist/`, `.next/`, `*.tsbuildinfo`, `next-env.d.ts` |
 | `.env.example` de cada app | `.env` y cualquier `.env.*` con valores reales |
 | `prisma/schema.prisma`, `prisma/migrations/` y `seed.ts` | La base local: `*.db`, `*.db-wal`, `*.db-shm`, `*.db-journal` |
-| `docs/`, `CONTEXTO.md`, `README.md`, `.github/` | Reportes: `coverage/`, `playwright-report/`, `test-results/` |
+| `docs/` (sin el PRD), `CONTEXTO.md`, `README.md`, `.github/` | Reportes: `coverage/`, `playwright-report/`, `test-results/` |
 | `frontend/AGENTS.md` y `CLAUDE.md` (los regenera `next dev`) | Logs, `.DS_Store`, `.idea/`, `.vscode/` (salvo `extensions.json`) |
 
 - Hay un único `.gitignore` en la raíz; no se crean otros en las subcarpetas.
@@ -661,8 +660,8 @@ git add . && git commit -m "chore(repo): unifica lockfile en la raíz"
 mkdir -p docs e2e .github
 touch e2e/.gitkeep
 # Copiar: .github/pull_request_template.md y .github/CODEOWNERS (sección Plantillas del plan),
-# docs/PRD_Evaluacion.pdf y este CONTEXTO.md en la raíz
-git add . && git commit -m "docs(repo): agrega contexto, PRD, plantilla de PR y CODEOWNERS"
+# y este CONTEXTO.md en la raíz
+git add . && git commit -m "docs(repo): agrega contexto, plantilla de PR y CODEOWNERS"
 
 git push -u origin chore/setup
 ```

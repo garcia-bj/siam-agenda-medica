@@ -35,3 +35,6 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# material de la evaluación (el repo es público)
+docs/PRD*.pdf
