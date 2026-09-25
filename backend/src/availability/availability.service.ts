@@ -34,7 +34,11 @@ export class AvailabilityService {
 
     const dayInTz = DateTime.fromFormat(date, 'yyyy-MM-dd', { zone: tz });
     if (!dayInTz.isValid) {
-      throw new ApiException(400, 'VALIDATION_ERROR', 'Fecha inválida. Debe tener formato YYYY-MM-DD');
+      throw new ApiException(
+        400,
+        'VALIDATION_ERROR',
+        'Fecha inválida. Debe tener formato YYYY-MM-DD',
+      );
     }
 
     // Si es fin de semana, retornar de inmediato sin consultar la base de datos

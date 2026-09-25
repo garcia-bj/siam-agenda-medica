@@ -1,14 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { DateTime } from 'luxon';
 import { vi } from 'vitest';
-import { ApiException } from '../common/api-exception.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { ScheduleService } from '../schedule/schedule.service.js';
 import { AvailabilityService } from './availability.service.js';
 
 describe('AvailabilityService', () => {
   let service: AvailabilityService;
-  let scheduleService: ScheduleService;
   let prismaMock: { appointment: { findMany: ReturnType<typeof vi.fn> } };
 
   beforeEach(async () => {
@@ -30,7 +27,6 @@ describe('AvailabilityService', () => {
     }).compile();
 
     service = module.get<AvailabilityService>(AvailabilityService);
-    scheduleService = module.get<ScheduleService>(ScheduleService);
   });
 
   it('debe estar definido', () => {
@@ -65,7 +61,9 @@ describe('AvailabilityService', () => {
 
   describe('Validación de fecha', () => {
     it('lanza ApiException 400 si la fecha calendario es inválida', async () => {
-      await expect(service.getDay({ date: '2026-02-31' })).rejects.toMatchObject({
+      await expect(
+        service.getDay({ date: '2026-02-31' }),
+      ).rejects.toMatchObject({
         status: 400,
         response: expect.objectContaining({
           code: 'VALIDATION_ERROR',
@@ -78,7 +76,10 @@ describe('AvailabilityService', () => {
   describe('Días hábiles y especialidades', () => {
     it('devuelve 72 slots (18 por cada una de las 4 especialidades) en un lunes sin filtro', async () => {
       // 2026-09-28 es lunes
-      const result = await service.getDay({ date: '2026-09-28' }, '2026-09-01T00:00:00-04:00');
+      const result = await service.getDay(
+        { date: '2026-09-28' },
+        '2026-09-01T00:00:00-04:00',
+      );
 
       expect(result.isBusinessDay).toBe(true);
       expect(result.date).toBe('2026-09-28');
@@ -86,9 +87,16 @@ describe('AvailabilityService', () => {
 
       const specialties = new Set(result.slots.map((s) => s.specialty));
       expect(specialties).toEqual(
-        new Set(['MEDICINA_GENERAL', 'PEDIATRIA', 'CARDIOLOGIA', 'DERMATOLOGIA']),
+        new Set([
+          'MEDICINA_GENERAL',
+          'PEDIATRIA',
+          'CARDIOLOGIA',
+          'DERMATOLOGIA',
+        ]),
       );
-      expect(result.slots.filter((s) => s.specialty === 'PEDIATRIA')).toHaveLength(18);
+      expect(
+        result.slots.filter((s) => s.specialty === 'PEDIATRIA'),
+      ).toHaveLength(18);
       expect(result.slots.every((s) => s.available)).toBe(true);
     });
 
@@ -132,10 +140,14 @@ describe('AvailabilityService', () => {
       expect(result.slots).toHaveLength(18);
 
       const slot900 = result.slots.find(
-        (s) => s.startTime === '2026-09-28T09:00:00-04:00' && s.specialty === 'PEDIATRIA',
+        (s) =>
+          s.startTime === '2026-09-28T09:00:00-04:00' &&
+          s.specialty === 'PEDIATRIA',
       );
       const slot930 = result.slots.find(
-        (s) => s.startTime === '2026-09-28T09:30:00-04:00' && s.specialty === 'PEDIATRIA',
+        (s) =>
+          s.startTime === '2026-09-28T09:30:00-04:00' &&
+          s.specialty === 'PEDIATRIA',
       );
 
       expect(slot900).toBeDefined();
@@ -166,9 +178,15 @@ describe('AvailabilityService', () => {
         now,
       );
 
-      const slot900 = result.slots.find((s) => s.startTime === '2026-09-28T09:00:00-04:00');
-      const slot930 = result.slots.find((s) => s.startTime === '2026-09-28T09:30:00-04:00');
-      const slot1000 = result.slots.find((s) => s.startTime === '2026-09-28T10:00:00-04:00');
+      const slot900 = result.slots.find(
+        (s) => s.startTime === '2026-09-28T09:00:00-04:00',
+      );
+      const slot930 = result.slots.find(
+        (s) => s.startTime === '2026-09-28T09:30:00-04:00',
+      );
+      const slot1000 = result.slots.find(
+        (s) => s.startTime === '2026-09-28T10:00:00-04:00',
+      );
 
       expect(slot900?.available).toBe(false);
       expect(slot930?.available).toBe(false);
