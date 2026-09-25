@@ -12,6 +12,7 @@ Closes #
 
 ## Checklist
 - [ ] Probado localmente
+- [ ] Tests unitarios de lo que agrega o cambia este PR
 - [ ] Cumple el "Listo cuando" del plan
 - [ ] Respeta el contrato de la API
 - [ ] Sin console.log ni código comentado
