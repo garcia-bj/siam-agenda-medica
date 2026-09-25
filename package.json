@@ -1,0 +1,12 @@
+{
+  "name": "siam",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --parallel --filter backend --filter frontend dev",
+    "dev:back": "pnpm --filter backend dev",
+    "dev:front": "pnpm --filter frontend dev",
+    "lint": "pnpm -r lint",
+    "test": "pnpm --filter backend test"
+  },
+  "packageManager": "pnpm@10.26.0"
+}

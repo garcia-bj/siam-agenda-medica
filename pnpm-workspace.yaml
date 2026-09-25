@@ -1,0 +1,7 @@
+packages:
+  - backend
+  - frontend
+onlyBuiltDependencies:
+  - '@prisma/client'
+  - '@prisma/engines'
+  - prisma
