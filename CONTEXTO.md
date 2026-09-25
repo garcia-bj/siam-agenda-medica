@@ -491,6 +491,16 @@ Un commit por paso lógico, varias veces al día. Nada de "cambios" o "wip".
 - `pnpm` siempre, nunca `npm install` ni `yarn` (rompen el lockfile).
 - Un paquete nuevo que ejecuta scripts al instalarse se aprueba o se niega en `allowBuilds` de `pnpm-workspace.yaml` (`pnpm approve-builds`).
 
+### Backend en ESM
+
+El backend es ESM (`"type": "module"`, `module: nodenext`): los imports relativos llevan **`.js`** aunque el archivo sea `.ts`.
+
+```ts
+import { SPECIALTIES } from '../common/constants/specialties.js';
+```
+
+Sin la extensión compila en el editor pero falla al arrancar con `ERR_MODULE_NOT_FOUND`. Los `nest g` ya la ponen solos.
+
 ### Qué va y qué no en el repositorio
 
 | Sí se sube | No se sube (lo cubre `.gitignore`) |
