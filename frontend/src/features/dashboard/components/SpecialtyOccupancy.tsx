@@ -1,0 +1,5 @@
+import type { MetricsSummary } from "@/types/api";
+const labels: Record<string, string> = { MEDICINA_GENERAL: "Medicina general", PEDIATRIA: "Pediatría", CARDIOLOGIA: "Cardiología", DERMATOLOGIA: "Dermatología" };
+export function SpecialtyOccupancy({ data }: { data: MetricsSummary["bySpecialty"] }) {
+  return <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h2 className="mb-5 text-base font-semibold">Ocupación por especialidad</h2><div className="space-y-5">{data.map((item) => <div key={item.specialty}><div className="mb-2 flex justify-between text-sm"><span>{labels[item.specialty]}</span><span className="font-semibold">{Math.round(item.occupancyRate * 100)}%</span></div><div className="h-3 overflow-hidden rounded-full bg-slate-100"><div role="progressbar" aria-label={`Ocupación ${labels[item.specialty]}`} aria-valuenow={Math.round(item.occupancyRate * 100)} aria-valuemin={0} aria-valuemax={100} className="h-full rounded-full bg-[#0F766E]" style={{ width: `${Math.min(item.occupancyRate * 100, 100)}%` }} /></div></div>)}</div></section>;
+}
