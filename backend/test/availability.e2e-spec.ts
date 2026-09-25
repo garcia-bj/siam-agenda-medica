@@ -88,6 +88,26 @@ describe('Disponibilidad de slots (e2e)', () => {
       ).toBe(true);
     });
 
+    it('el último slot del día es a las 17:30 y no existe slot a las 18:00', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/availability?date=2030-06-17&specialty=PEDIATRIA')
+        .expect(200);
+
+      const slots = res.body.slots;
+      const lastSlot = slots[slots.length - 1];
+      expect(lastSlot).toMatchObject({
+        specialty: 'PEDIATRIA',
+        startTime: '2030-06-17T17:30:00-04:00',
+        endTime: '2030-06-17T18:00:00-04:00',
+      });
+
+      const slot1800 = slots.find(
+        (s: { startTime: string }) =>
+          s.startTime === '2030-06-17T18:00:00-04:00',
+      );
+      expect(slot1800).toBeUndefined();
+    });
+
     it('un sábado devuelve 200 con isBusinessDay: false y slots: []', async () => {
       // 2030-06-22 es sábado
       const res = await request(app.getHttpServer())
@@ -137,7 +157,11 @@ describe('Disponibilidad de slots (e2e)', () => {
       expect(res.body).toMatchObject({
         statusCode: 400,
         code: 'VALIDATION_ERROR',
+        message: 'Datos inválidos',
       });
+      expect(res.body.details).toEqual(
+        expect.arrayContaining([expect.objectContaining({ field: 'date' })]),
+      );
     });
 
     it('si falta el parámetro date devuelve 400 VALIDATION_ERROR', async () => {
@@ -162,6 +186,23 @@ describe('Disponibilidad de slots (e2e)', () => {
       expect(res.body).toMatchObject({
         statusCode: 400,
         code: 'VALIDATION_ERROR',
+      });
+      expect(res.body.details).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ field: 'specialty' }),
+        ]),
+      );
+    });
+
+    it('una especialidad vacía devuelve 400 VALIDATION_ERROR', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/availability?date=2030-06-17&specialty=')
+        .expect(400);
+
+      expect(res.body).toMatchObject({
+        statusCode: 400,
+        code: 'VALIDATION_ERROR',
+        message: 'Datos inválidos',
       });
       expect(res.body.details).toEqual(
         expect.arrayContaining([
