@@ -65,7 +65,7 @@ seleccionar fecha → agendar → ver la cita en la lista → cancelar.
 
 | Capa | Tecnología |
 | --- | --- |
-| Gestor de paquetes | **pnpm** (workspaces), Node 20 o superior |
+| Gestor de paquetes | **pnpm 12** (workspaces), Node 22 o superior |
 | Backend | NestJS + TypeScript |
 | Validación backend | `class-validator` + `class-transformer` (DTOs) |
 | Base de datos | SQLite + Prisma |
@@ -78,6 +78,18 @@ seleccionar fecha → agendar → ver la cita en la lista → cancelar.
 | Tests backend | Vitest (incluido en Nest 12) |
 | Tests E2E | Playwright |
 | Ejecución | Docker Compose (un solo comando) |
+
+Versiones fijadas en el PR-01 (la última estable compatible de cada una):
+
+| Paquete | Versión | Nota |
+| --- | --- | --- |
+| pnpm | 12.6.0 | Rechaza paquetes publicados hace menos de 24 h (`minimumReleaseAge`): no se desactiva |
+| NestJS | 12.1 | |
+| Next.js / React | 16.3 / 19.3 | |
+| TypeScript | 6.0 | TS 7 aún no es compatible con typescript-eslint |
+| ESLint (front) | 9 | Los plugins de `eslint-config-next` todavía no soportan ESLint 10 |
+| Vitest | 5.0 | Alias de tsconfig con `resolve.tsconfigPaths` de Vite (sin plugin) |
+| Tailwind CSS | 4.3 | |
 
 No se usan las rutas API de Next.js: el backend es un servicio separado. No hay CI/CD en este proyecto.
 
@@ -478,6 +490,22 @@ Un commit por paso lógico, varias veces al día. Nada de "cambios" o "wip".
 - Solo se sube `.env.example`, nunca `.env`.
 - Conflicto en `pnpm-lock.yaml`: aceptar el de `develop`, correr `pnpm install` y hacer commit del lock regenerado.
 - `pnpm` siempre, nunca `npm install` ni `yarn` (rompen el lockfile).
+- Un paquete nuevo que ejecuta scripts al instalarse se aprueba o se niega en `allowBuilds` de `pnpm-workspace.yaml` (`pnpm approve-builds`).
+
+### Qué va y qué no en el repositorio
+
+| Sí se sube | No se sube (lo cubre `.gitignore`) |
+| --- | --- |
+| Código fuente, tests y configuración (`tsconfig`, `eslint`, `vitest`, `next.config`) | `node_modules/`, `.pnpm-store/` |
+| `package.json` y **un solo** `pnpm-lock.yaml` en la raíz | Builds: `dist/`, `.next/`, `*.tsbuildinfo`, `next-env.d.ts` |
+| `.env.example` de cada app | `.env` y cualquier `.env.*` con valores reales |
+| `prisma/schema.prisma`, `prisma/migrations/` y `seed.ts` | La base local: `*.db`, `*.db-wal`, `*.db-shm`, `*.db-journal` |
+| `docs/`, `CONTEXTO.md`, `README.md`, `.github/` | Reportes: `coverage/`, `playwright-report/`, `test-results/` |
+| `frontend/AGENTS.md` y `CLAUDE.md` (los regenera `next dev`) | Logs, `.DS_Store`, `.idea/`, `.vscode/` (salvo `extensions.json`) |
+
+- Hay un único `.gitignore` en la raíz; no se crean otros en las subcarpetas.
+- `.gitattributes` fuerza finales de línea LF en todo el repo (Windows y Docker no se pelean). Los binarios (`.pdf`, imágenes, `.xlsx`) van marcados como `binary`.
+- Nada de secretos, tokens ni datos reales de pacientes, ni siquiera en los seeds: el repo es público.
 
 ---
 
@@ -488,8 +516,9 @@ Un commit por paso lógico, varias veces al día. Nada de "cambios" o "wip".
 ### Paso 0 · Requisitos (cada integrante)
 
 ```bash
-node -v                      # 20 o superior
-corepack enable              # activa pnpm
+node -v                      # 22 o superior
+npm i -g pnpm@12             # corepack no instala pnpm 12
+pnpm -v                      # 12.x
 git config --global user.name "Tu Nombre"
 git config --global user.email "tu@correo.com"
 ```
@@ -545,10 +574,11 @@ cat > pnpm-workspace.yaml <<'EOF'
 packages:
   - backend
   - frontend
-onlyBuiltDependencies:
-  - '@prisma/client'
-  - '@prisma/engines'
-  - prisma
+allowBuilds:
+  '@prisma/client': true
+  '@prisma/engines': true
+  prisma: true
+  unrs-resolver: false
 EOF
 
 cat > package.json <<'EOF'
@@ -565,7 +595,7 @@ cat > package.json <<'EOF'
 }
 EOF
 
-corepack use pnpm@latest      # agrega "packageManager" al package.json
+npm pkg set packageManager=pnpm@12.6.0
 git add . && git commit -m "chore(repo): configura workspace de pnpm"
 ```
 
@@ -645,7 +675,7 @@ Abrir el PR `chore/setup → develop` en GitHub y pedir la aprobación del Backe
 pnpm dev          # backend en :3001 y frontend en :3000
 ```
 
-Si pnpm muestra "Ignored build scripts", correr `pnpm approve-builds` y aprobar los paquetes de Prisma.
+Si pnpm muestra "Ignored build scripts", correr `pnpm approve-builds` y aprobar o negar el paquete en `allowBuilds`.
 
 ### Día a día (todos)
 
