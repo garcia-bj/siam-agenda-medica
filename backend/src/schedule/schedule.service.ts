@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { DateTime } from 'luxon';
+import { DateTime, IANAZone } from 'luxon';
 import { ApiException } from '../common/api-exception.js';
 import { SPECIALTIES, Specialty } from '../common/constants/specialties.js';
 
@@ -13,11 +13,9 @@ export interface Slot {
 export const DEFAULT_CLINIC_TZ = 'America/La_Paz';
 export const BUSINESS_START_HOUR = 9;
 export const BUSINESS_START_MINUTE = 0;
-export const BUSINESS_END_HOUR = 18;
 export const SLOT_DURATION_MINUTES = 30;
 export const LAST_SLOT_HOUR = 17;
 export const LAST_SLOT_MINUTE = 30;
-export const SLOTS_PER_DAY_PER_SPECIALTY = 18;
 
 @Injectable()
 export class ScheduleService {
@@ -25,6 +23,11 @@ export class ScheduleService {
 
   constructor() {
     this.clinicTz = process.env.CLINIC_TZ || DEFAULT_CLINIC_TZ;
+    if (!IANAZone.isValidZone(this.clinicTz)) {
+      throw new Error(
+        `Zona horaria CLINIC_TZ inválida: "${this.clinicTz}". Debe ser una zona IANA válida (ej: America/La_Paz).`,
+      );
+    }
   }
 
   /**

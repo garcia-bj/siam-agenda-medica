@@ -15,6 +15,22 @@ describe('ScheduleService', () => {
     service = module.get<ScheduleService>(ScheduleService);
   });
 
+  /** Helper para verificar que una llamada lance 422 con código OUTSIDE_BUSINESS_HOURS */
+  function expectOutsideHours(fn: () => void) {
+    try {
+      fn();
+      expect.unreachable('Debería haber lanzado ApiException');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ApiException);
+      const apiError = error as ApiException;
+      expect(apiError.getStatus()).toBe(422);
+      expect(apiError.getResponse()).toMatchObject({
+        code: 'OUTSIDE_BUSINESS_HOURS',
+        statusCode: 422,
+      });
+    }
+  }
+
   it('should be defined', () => {
     expect(service).toBeDefined();
     expect(service.clinicTz).toBe('America/La_Paz');
@@ -87,95 +103,32 @@ describe('ScheduleService', () => {
     });
 
     it('validateSlot lanza 422 OUTSIDE_BUSINESS_HOURS en sábado', () => {
-      expect.assertions(3);
-      try {
-        service.validateSlot('2026-10-03T10:00:00-04:00', fixedNow);
-      } catch (error) {
-        expect(error).toBeInstanceOf(ApiException);
-        const apiError = error as ApiException;
-        expect(apiError.getStatus()).toBe(422);
-        expect(apiError.getResponse()).toMatchObject({
-          code: 'OUTSIDE_BUSINESS_HOURS',
-        });
-      }
+      expectOutsideHours(() => service.validateSlot('2026-10-03T10:00:00-04:00', fixedNow));
     });
 
     it('validateSlot lanza 422 OUTSIDE_BUSINESS_HOURS en domingo', () => {
-      expect.assertions(3);
-      try {
-        service.validateSlot('2026-10-04T10:00:00-04:00', fixedNow);
-      } catch (error) {
-        expect(error).toBeInstanceOf(ApiException);
-        const apiError = error as ApiException;
-        expect(apiError.getStatus()).toBe(422);
-        expect(apiError.getResponse()).toMatchObject({
-          code: 'OUTSIDE_BUSINESS_HOURS',
-        });
-      }
+      expectOutsideHours(() => service.validateSlot('2026-10-04T10:00:00-04:00', fixedNow));
     });
   });
 
-  describe('Criterio 3: 08:30, 18:00 o 09:15 son inválidos', () => {
+  describe('Criterio 3: 08:30, 18:00 o 09:15 son inválidos (y comprobación de 422 con código)', () => {
     // 2026-09-29 es martes (día hábil)
     const fixedNow = DateTime.fromISO('2026-09-25T08:00:00-04:00', { setZone: true });
 
-    it('08:30 es inválido (antes del horario de apertura 09:00)', () => {
-      expect(() => {
-        service.validateSlot('2026-09-29T08:30:00-04:00', fixedNow);
-      }).toThrow(ApiException);
+    const invalidTimes = [
+      { time: '2026-09-29T08:30:00-04:00', reason: '08:30 (antes de horario 09:00)' },
+      { time: '2026-09-29T18:00:00-04:00', reason: '18:00 (después del último turno 17:30)' },
+      { time: '2026-09-29T09:15:00-04:00', reason: '09:15 (minutos no son :00 ni :30)' },
+      { time: '2026-09-29T09:45:00-04:00', reason: '09:45 (minutos no son :00 ni :30)' },
+      { time: '2026-09-29T09:30:15-04:00', reason: '09:30:15 (segundos distintos de cero)' },
+    ];
 
-      try {
-        service.validateSlot('2026-09-29T08:30:00-04:00', fixedNow);
-      } catch (e) {
-        const error = e as ApiException;
-        expect(error.getStatus()).toBe(422);
-        expect(error.getResponse()).toMatchObject({
-          code: 'OUTSIDE_BUSINESS_HOURS',
-        });
-      }
-    });
-
-    it('18:00 es inválido (último slot empieza a las 17:30)', () => {
-      expect(() => {
-        service.validateSlot('2026-09-29T18:00:00-04:00', fixedNow);
-      }).toThrow(ApiException);
-
-      try {
-        service.validateSlot('2026-09-29T18:00:00-04:00', fixedNow);
-      } catch (e) {
-        const error = e as ApiException;
-        expect(error.getStatus()).toBe(422);
-        expect(error.getResponse()).toMatchObject({
-          code: 'OUTSIDE_BUSINESS_HOURS',
-        });
-      }
-    });
-
-    it('09:15 es inválido (no es bloque de 30 min, minutos deben ser :00 o :30)', () => {
-      expect(() => {
-        service.validateSlot('2026-09-29T09:15:00-04:00', fixedNow);
-      }).toThrow(ApiException);
-
-      try {
-        service.validateSlot('2026-09-29T09:15:00-04:00', fixedNow);
-      } catch (e) {
-        const error = e as ApiException;
-        expect(error.getStatus()).toBe(422);
-        expect(error.getResponse()).toMatchObject({
-          code: 'OUTSIDE_BUSINESS_HOURS',
-        });
-      }
-    });
-
-    it('09:45 o segundos distintos de cero también son inválidos', () => {
-      expect(() => {
-        service.validateSlot('2026-09-29T09:45:00-04:00', fixedNow);
-      }).toThrow(ApiException);
-
-      expect(() => {
-        service.validateSlot('2026-09-29T09:30:15-04:00', fixedNow);
-      }).toThrow(ApiException);
-    });
+    it.each(invalidTimes)(
+      'rechaza con 422 OUTSIDE_BUSINESS_HOURS el horario $reason',
+      ({ time }) => {
+        expectOutsideHours(() => service.validateSlot(time, fixedNow));
+      },
+    );
 
     it('09:00 y 17:30 son horarios válidos', () => {
       expect(() => {
@@ -192,33 +145,13 @@ describe('ScheduleService', () => {
     // 2026-09-28 12:00:00
     const fixedNow = DateTime.fromISO('2026-09-28T12:00:00-04:00', { setZone: true });
 
-    it('validateSlot rechaza horarios de un día anterior', () => {
-      expect.assertions(3);
-      try {
-        service.validateSlot('2026-09-25T10:00:00-04:00', fixedNow);
-      } catch (error) {
-        expect(error).toBeInstanceOf(ApiException);
-        const apiError = error as ApiException;
-        expect(apiError.getStatus()).toBe(422);
-        expect(apiError.getResponse()).toMatchObject({
-          code: 'OUTSIDE_BUSINESS_HOURS',
-          message: 'No se pueden agendar citas en fechas u horas pasadas',
-        });
-      }
+    it('validateSlot rechaza horarios de un día anterior con 422 OUTSIDE_BUSINESS_HOURS', () => {
+      expectOutsideHours(() => service.validateSlot('2026-09-25T10:00:00-04:00', fixedNow));
     });
 
-    it('validateSlot rechaza un horario pasado del mismo día', () => {
-      expect.assertions(2);
-      try {
-        // Son las 12:00, las 11:30 ya pasó
-        service.validateSlot('2026-09-28T11:30:00-04:00', fixedNow);
-      } catch (error) {
-        const apiError = error as ApiException;
-        expect(apiError.getStatus()).toBe(422);
-        expect(apiError.getResponse()).toMatchObject({
-          code: 'OUTSIDE_BUSINESS_HOURS',
-        });
-      }
+    it('validateSlot rechaza un horario pasado del mismo día con 422 OUTSIDE_BUSINESS_HOURS', () => {
+      // Son las 12:00, las 11:30 ya pasó
+      expectOutsideHours(() => service.validateSlot('2026-09-28T11:30:00-04:00', fixedNow));
     });
 
     it('validateSlot acepta un horario futuro del mismo día', () => {
@@ -265,9 +198,86 @@ describe('ScheduleService', () => {
     it('rechaza un horario en UTC que al convertirse a La Paz queda fuera del horario hábil', () => {
       // 09:00:00Z en UTC equivale a 05:00:00-04:00 en La Paz (fuera de horario)
       const fixedNow = DateTime.fromISO('2026-09-25T08:00:00-04:00', { setZone: true });
-      expect(() => {
-        service.validateSlot('2026-09-28T09:00:00Z', fixedNow);
-      }).toThrow(ApiException);
+      expectOutsideHours(() => service.validateSlot('2026-09-28T09:00:00Z', fixedNow));
+    });
+  });
+
+  describe('Cruce de medianoche UTC y zona horaria', () => {
+    it('con now nocturno local (ya día siguiente en UTC), calcula correctamente disponibilidad de hoy y mañana', () => {
+      // 2026-09-28T20:30:00-04:00 (en UTC ya es 2026-09-29T00:30:00Z)
+      const nightNow = DateTime.fromISO('2026-09-28T20:30:00-04:00', { setZone: true });
+
+      // Para el 29 de septiembre (mañana en La Paz), los 18 slots están disponibles
+      const tomorrowSlots = service.generateSlots('2026-09-29', 'MEDICINA_GENERAL', nightNow);
+      expect(tomorrowSlots).toHaveLength(18);
+      expect(tomorrowSlots.every((s) => s.available === true)).toBe(true);
+
+      // Para el 28 de septiembre (hoy en La Paz, pero ya pasó el horario hábil), ninguno está disponible
+      const todaySlots = service.generateSlots('2026-09-28', 'MEDICINA_GENERAL', nightNow);
+      expect(todaySlots).toHaveLength(18);
+      expect(todaySlots.every((s) => s.available === false)).toBe(true);
+    });
+
+    it('valida correctamente slots enviados en UTC en la frontera de medianoche', () => {
+      const fixedNow = DateTime.fromISO('2026-09-25T08:00:00-04:00', { setZone: true });
+
+      // 2026-10-02T21:30:00Z en UTC es viernes 17:30 en La Paz (válido)
+      expect(() => service.validateSlot('2026-10-02T21:30:00Z', fixedNow)).not.toThrow();
+
+      // 2026-10-03T00:00:00Z en UTC es viernes 20:00 en La Paz (da 422 OUTSIDE_BUSINESS_HOURS)
+      expectOutsideHours(() => service.validateSlot('2026-10-03T00:00:00Z', fixedNow));
+    });
+  });
+
+  describe('Comportamiento en el límite exacto de now', () => {
+    it('un slot que empieza exactamente en now se considera disponible y válido', () => {
+      const exactSlotStart = '2026-09-28T09:00:00-04:00';
+      const nowAtStart = DateTime.fromISO(exactSlotStart, { setZone: true });
+
+      // En generateSlots: el slot de las 09:00 está disponible (available: true)
+      const slots = service.generateSlots('2026-09-28', 'MEDICINA_GENERAL', nowAtStart);
+      const slot0900 = slots.find((s) => s.startTime === exactSlotStart);
+      expect(slot0900).toBeDefined();
+      expect(slot0900?.available).toBe(true);
+
+      // En validateSlot: no lanza excepción
+      expect(() => service.validateSlot(exactSlotStart, nowAtStart)).not.toThrow();
+    });
+
+    it('un slot que empieza 1 segundo antes de now se considera pasado y da 422', () => {
+      const slotStart = '2026-09-28T09:00:00-04:00';
+      const nowOneSecondAfter = DateTime.fromISO('2026-09-28T09:00:01-04:00', { setZone: true });
+
+      const slots = service.generateSlots('2026-09-28', 'MEDICINA_GENERAL', nowOneSecondAfter);
+      const slot0900 = slots.find((s) => s.startTime === slotStart);
+      expect(slot0900?.available).toBe(false);
+
+      expectOutsideHours(() => service.validateSlot(slotStart, nowOneSecondAfter));
+    });
+  });
+
+  describe('Validación de CLINIC_TZ en constructor', () => {
+    const originalEnv = process.env.CLINIC_TZ;
+
+    afterEach(() => {
+      if (originalEnv !== undefined) {
+        process.env.CLINIC_TZ = originalEnv;
+      } else {
+        delete process.env.CLINIC_TZ;
+      }
+    });
+
+    it('lanza Error al inicializar si CLINIC_TZ es una zona inválida', () => {
+      process.env.CLINIC_TZ = 'America/LaPaz'; // Sin guión bajo
+      expect(() => new ScheduleService()).toThrow(
+        'Zona horaria CLINIC_TZ inválida: "America/LaPaz"',
+      );
+    });
+
+    it('acepta una zona IANA válida configurada por entorno', () => {
+      process.env.CLINIC_TZ = 'America/Santiago';
+      const customService = new ScheduleService();
+      expect(customService.clinicTz).toBe('America/Santiago');
     });
   });
 
@@ -293,18 +303,33 @@ describe('ScheduleService', () => {
     });
 
     it('lanza 400 VALIDATION_ERROR si el formato de fecha es inválido', () => {
-      expect(() => service.generateSlots('fecha-invalida')).toThrow(ApiException);
       try {
         service.generateSlots('fecha-invalida');
+        expect.unreachable('Debería haber lanzado ApiException');
       } catch (e) {
-        expect((e as ApiException).getStatus()).toBe(400);
+        expect(e).toBeInstanceOf(ApiException);
+        const apiError = e as ApiException;
+        expect(apiError.getStatus()).toBe(400);
+        expect(apiError.getResponse()).toMatchObject({
+          code: 'VALIDATION_ERROR',
+          statusCode: 400,
+        });
       }
     });
 
     it('lanza 400 VALIDATION_ERROR si la especialidad no existe', () => {
-      expect(() =>
-        service.generateSlots('2026-09-28', 'NEUROLOGIA' as any),
-      ).toThrow(ApiException);
+      try {
+        service.generateSlots('2026-09-28', 'NEUROLOGIA' as any);
+        expect.unreachable('Debería haber lanzado ApiException');
+      } catch (e) {
+        expect(e).toBeInstanceOf(ApiException);
+        const apiError = e as ApiException;
+        expect(apiError.getStatus()).toBe(400);
+        expect(apiError.getResponse()).toMatchObject({
+          code: 'VALIDATION_ERROR',
+          statusCode: 400,
+        });
+      }
     });
   });
 });
