@@ -27,6 +27,12 @@ describe('toDetails', () => {
     expect(toDetails(errors)).toEqual([{ field: 'filtro.desde', message: 'Fecha inválida' }]);
   });
 
+  it('traduce el error de campo no permitido, que class-validator solo da en inglés', () => {
+    const errors = [error('extra', { whitelistValidation: 'property extra should not exist' })];
+
+    expect(toDetails(errors)).toEqual([{ field: 'extra', message: 'Campo no permitido' }]);
+  });
+
   it('devuelve un arreglo vacío si no hay errores', () => {
     expect(toDetails([])).toEqual([]);
   });

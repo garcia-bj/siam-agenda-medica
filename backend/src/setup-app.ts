@@ -20,7 +20,11 @@ export function setupApp(app: INestApplication) {
 export function toDetails(errors: ValidationError[], parent = ''): ErrorDetail[] {
   return errors.flatMap((error) => {
     const field = parent ? `${parent}.${error.property}` : error.property;
-    const own = Object.values(error.constraints ?? {}).map((message) => ({ field, message }));
+    // class-validator no deja traducir el error de campo no permitido desde los DTO: se traduce aquí.
+    const own = Object.entries(error.constraints ?? {}).map(([rule, message]) => ({
+      field,
+      message: rule === 'whitelistValidation' ? 'Campo no permitido' : message,
+    }));
     return [...own, ...toDetails(error.children ?? [], field)];
   });
 }
