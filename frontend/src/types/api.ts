@@ -1,9 +1,36 @@
-// Contrato de la API. Tiene que coincidir con docs/api.md.
+export const SPECIALTIES = [
+  'MEDICINA_GENERAL',
+  'PEDIATRIA',
+  'CARDIOLOGIA',
+  'DERMATOLOGIA',
+] as const;
 
-export type Specialty = 'MEDICINA_GENERAL' | 'PEDIATRIA' | 'CARDIOLOGIA' | 'DERMATOLOGIA';
+export type Specialty = (typeof SPECIALTIES)[number];
+
 export type AppointmentStatus = 'ACTIVE' | 'CANCELLED';
-export type AppointmentStatusFilter = AppointmentStatus | 'ALL';
-export type ReportFormat = 'csv' | 'xlsx';
+
+export interface Appointment {
+  id: string;
+  patientName: string;
+  patientEmail: string;
+  specialty: Specialty;
+  startTime: string;
+  endTime: string;
+  status: AppointmentStatus;
+  cancelledAt: string | null;
+  createdAt: string;
+}
+
+export interface CreateAppointmentDto {
+  patientName: string;
+  patientEmail: string;
+  specialty: Specialty;
+  startTime: string;
+}
+
+export interface UpdateAppointmentDto {
+  startTime: string;
+}
 
 export interface Slot {
   specialty: Specialty;
@@ -18,64 +45,29 @@ export interface AvailabilityResponse {
   slots: Slot[];
 }
 
+export interface AppointmentsResponse {
+  data: Appointment[];
+}
+
+export type AppointmentFilterStatus = 'ACTIVE' | 'CANCELLED' | 'ALL';
+
+export interface AppointmentsQuery {
+  specialty?: Specialty;
+  date?: string;
+  status?: AppointmentFilterStatus;
+}
+
 export interface AvailabilityQuery {
   date: string;
   specialty?: Specialty;
 }
 
-export interface Appointment {
-  id: string;
-  patientName: string;
-  patientEmail: string;
-  specialty: Specialty;
-  startTime: string;
-  endTime: string;
-  status: AppointmentStatus;
-  cancelledAt: string | null;
-  createdAt: string;
+export interface ErrorDetail {
+  field: string;
+  message: string;
 }
 
-export interface CreateAppointmentInput {
-  patientName: string;
-  patientEmail: string;
-  specialty: Specialty;
-  startTime: string;
-}
-
-export interface RescheduleAppointmentInput {
-  startTime: string;
-}
-
-export interface AppointmentsQuery {
-  specialty?: Specialty;
-  date?: string;
-  status?: AppointmentStatusFilter;
-}
-
-export interface AppointmentsResponse {
-  data: Appointment[];
-}
-
-export interface DateRangeQuery {
-  from?: string;
-  to?: string;
-  specialty?: Specialty;
-}
-
-export interface MetricsSummary {
-  range: { from: string; to: string; businessDays: number };
-  totals: { active: number; cancelled: number; capacity: number; occupancyRate: number; cancellationRate: number };
-  bySpecialty: { specialty: Specialty; active: number; cancelled: number; capacity: number; occupancyRate: number }[];
-  byDay: { date: string; active: number; cancelled: number }[];
-  byHour: { hour: string; active: number }[];
-}
-
-export interface ReportQuery extends DateRangeQuery {
-  status?: AppointmentStatusFilter;
-  format?: ReportFormat;
-}
-
-export type ApiErrorCode =
+export type ErrorCode =
   | 'VALIDATION_ERROR'
   | 'NOT_FOUND'
   | 'SLOT_TAKEN'
@@ -85,7 +77,33 @@ export type ApiErrorCode =
 
 export interface ApiError {
   statusCode: number;
-  code: ApiErrorCode;
+  code: ErrorCode;
   message: string;
-  details: { field: string; message: string }[];
+  details: ErrorDetail[];
+}
+
+export interface MetricsQuery {
+  from?: string;
+  to?: string;
+  specialty?: Specialty;
+}
+
+export interface MetricsSummary {
+  range: { from: string; to: string; businessDays: number };
+  totals: {
+    active: number;
+    cancelled: number;
+    capacity: number;
+    occupancyRate: number;
+    cancellationRate: number;
+  };
+  bySpecialty: {
+    specialty: Specialty;
+    active: number;
+    cancelled: number;
+    capacity: number;
+    occupancyRate: number;
+  }[];
+  byDay: { date: string; active: number; cancelled: number }[];
+  byHour: { hour: string; active: number }[];
 }

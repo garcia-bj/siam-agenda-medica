@@ -1,26 +1,143 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --primary: #0E6B73;
+  --primary-soft: #E3F0EF;
+  --bg: #F5F4EF;
+  --surface: #ffffff;
+  --ink: #17212B;
+  --muted: #5B6570;
+  --line: #E3E1DA;
+  --busy: #EDEBE5;
+  --danger: #B42318;
+  --r: 12px;
+  --t: 0.2s ease;
+  --shadow: 0 4px 16px rgba(14, 107, 115, 0.06);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-primary: var(--primary);
+  --color-primary-soft: var(--primary-soft);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-busy: var(--busy);
+  --color-danger: var(--danger);
+  --font-heading: var(--font-heading);
+  --font-body: var(--font-body);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body), 'Instrument Sans', sans-serif;
 }
+
+h1, h2, h3 {
+  font-family: var(--font-heading), 'Fraunces', serif;
+  letter-spacing: -0.025em;
+  color: var(--ink);
+}
+
+button, input, select { font: inherit; }
+button { cursor: pointer; }
+a { text-decoration: none; color: inherit; }
+
+/* --- Buttons --- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all var(--t);
+}
+.btn--primary { background: var(--primary); color: #fff; box-shadow: 0 4px 12px rgba(14, 107, 115, 0.18); }
+.btn--primary:hover { background: #0A5258; box-shadow: 0 6px 16px rgba(14, 107, 115, 0.25); }
+.btn--secondary { background: var(--primary-soft); color: var(--primary); }
+.btn--secondary:hover { background: #D0E5E3; }
+.btn--danger { background: var(--danger); color: #fff; }
+.btn--danger:hover { background: #8C1D14; }
+.btn--ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+.btn--ghost:hover { border-color: var(--primary); color: var(--primary); }
+.btn--wide { width: 100%; }
+
+/* --- Fields --- */
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field__label { font-size: 13px; font-weight: 600; color: var(--muted); }
+.field__input,
+.field__select {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--surface);
+  outline: none;
+  transition: border-color var(--t), box-shadow var(--t);
+}
+.field__input:focus,
+.field__select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+.field__input--error { border-color: var(--danger); }
+.field__error { font-size: 12px; color: var(--danger); }
+
+/* --- Specialty Tag --- */
+.specialty-tag {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* --- Modal --- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(23, 33, 43, 0.6);
+  backdrop-filter: blur(4px);
+  animation: backdropIn 0.2s ease;
+}
+@keyframes backdropIn { from { opacity: 0; } to { opacity: 1; } }
+.modal {
+  position: relative;
+  width: min(480px, 100%);
+  padding: 32px;
+  background: var(--surface);
+  border-radius: 16px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.2);
+  animation: modalIn 0.25s ease;
+}
+@keyframes modalIn { from { opacity: 0; transform: translateY(16px) scale(0.97); } to { opacity: 1; transform: none; } }
+
+/* --- Spinner --- */
+.spinner { animation: spin 0.8s linear infinite; color: var(--primary); }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* --- Empty State --- */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 48px 24px;
+  text-align: center;
+}
+.empty-state__title { font-size: 16px; font-weight: 600; color: var(--ink); }
+.empty-state__desc { font-size: 14px; color: var(--muted); }
