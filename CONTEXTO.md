@@ -461,7 +461,20 @@ Un commit por paso lógico, varias veces al día. Nada de "cambios" o "wip".
 - Cumple los criterios de aceptación de su tarjeta y coincide con el mockup (si es UI).
 - PR aprobado y mergeado en `develop`, probado junto con lo demás.
 - Sin `console.log`, código comentado ni TODO sin tarjeta.
+- **Todo PR con funcionalidad trae sus propios tests unitarios** de lo que agrega o cambia. Un PR sin tests unitarios no se aprueba (salvo docs o configuración pura).
 - Si cambió el contrato o la forma de ejecutar, está actualizado en `docs/api.md`, este archivo o el README.
+
+### Tests unitarios
+
+| | Backend | Frontend |
+| --- | --- | --- |
+| Herramienta | Vitest (incluido en Nest) | Vitest + Testing Library (se configura en el PR-09) |
+| Dónde | `*.spec.ts` al lado del archivo que prueban | `*.test.tsx` / `*.test.ts` al lado del componente o hook |
+| Qué se prueba | Reglas de negocio de los services (con la base o Prisma simulados), funciones puras, DTOs | Hooks, validaciones de formularios (zod), componentes con estados de carga, error y vacío |
+| Comando | `pnpm --filter backend test` | `pnpm --filter frontend test` |
+
+- Unitario = rápido y sin servidor levantado. Lo que necesita la base real o la app completa va en `test/*.e2e-spec.ts` (backend) o en `e2e/` (Playwright); esos tests suman, pero no reemplazan a los unitarios.
+- Cada bug corregido trae un test que fallaba antes del arreglo.
 
 ### Reglas del equipo
 
