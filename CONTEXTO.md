@@ -403,7 +403,7 @@ frontend/src/
 | Ruta | Archivo | Pantalla (mockup) | Componentes |
 | --- | --- | --- | --- |
 | `/` | `app/page.tsx` | Vista 1 · Agendar cita / Vista 1 · Móvil | `SpecialtyPills`, `DatePicker` (escritorio), `DayStrip` (móvil), `SlotGrid` (3 col), `BookingForm` |
-| `/citas` | `app/citas/page.tsx` | Vista 2 · Mis citas / Vista 2 · Móvil | `AppointmentFilters`, `AppointmentList` (tabla / tarjetas), `CancelDialog`, `RescheduleDialog` (`DayStrip` + `SlotGrid` de 6 col) |
+| `/citas` | `app/citas/page.tsx` | Vista 2 · Citas agendadas / Vista 2 · Móvil | `AppointmentFilters`, `AppointmentList` (tabla / tarjetas), `CancelDialog`, `RescheduleDialog` (`DayStrip` + `SlotGrid` de 6 col) |
 | `/dashboard` | `app/dashboard/page.tsx` | Dashboard · Métricas y reportes | `DateRangeFilter`, 4 × `KpiCard`, `AppointmentsByDayChart`, `SpecialtyOccupancy`, `PeakHoursChart`, `ReportDownloadCard` |
 
 Los modales no son rutas: se abren con estado dentro de `/citas`.
@@ -412,10 +412,17 @@ Variables del front (`frontend/.env.example`): `NEXT_PUBLIC_API_URL=http://local
 
 ### Tema visual (de los mockups)
 
+La paleta sale del logo (`frontend/public/logo.svg`): teal `#0C9488` y menta `#5FEAD5`. El teal exacto del logo queda solo para la marca: con texto blanco no llega al contraste AA (4,5:1), por eso los botones usan su versión oscura.
+
 | Token | Valor | Uso |
 | --- | --- | --- |
-| `primary` | `#0E6B73` | Botones principales, seleccionado |
-| `primary-soft` | `#E3F0EF` | Fondos suaves, chips |
+| `brand` | `#0C9488` | Solo el logo |
+| `mint` | `#5FEAD5` | Acentos: punto del logo, detalles sobre fondos oscuros. Nunca texto sobre fondo claro |
+| `primary` | `#0F766E` | Botones principales, seleccionado, barras de gráficos (blanco encima: 5,5:1) |
+| `primary-ink` | `#115E59` | Texto y links sobre `primary-soft` |
+| `primary-soft` | `#E0F7F3` | Fondos suaves, chips, navegación activa |
+| `primary-dark` | `#134E4A` | Tarjeta destacada del dashboard (texto `#FFFFFF`, etiquetas `#99F6E4`) |
+| `chart-2` | `#7DD3C7` | Barras secundarias de gráficos |
 | `bg` | `#F5F4EF` | Fondo de página |
 | `ink` | `#17212B` | Texto principal |
 | `muted` | `#5B6570` | Texto secundario |
@@ -424,7 +431,9 @@ Variables del front (`frontend/.env.example`): `NEXT_PUBLIC_API_URL=http://local
 | `danger` | `#B42318` | Errores, cancelar |
 | Fuentes | Fraunces (títulos), Instrument Sans (texto) | `next/font` |
 
-Colores de `SpecialtyTag`: Medicina General `#EAF0FA`/`#2B4A7E`, Pediatría `#E3F0EF`/`#0A5258`, Cardiología `#FBEAE4`/`#9A3412`, Dermatología `#F2ECF8`/`#633A86`.
+Colores de `SpecialtyTag`: Medicina General `#EAF0FA`/`#2B4A7E`, Pediatría `#E0F7F3`/`#115E59`, Cardiología `#FBEAE4`/`#9A3412`, Dermatología `#F2ECF8`/`#633A86`.
+
+Cabecera: logo + "SIAM" / "Agenda Médica" y navegación en píldoras (activa en `primary-soft` con texto `primary-ink`). La app no tiene usuarios: nada de saludos personales ni avatares.
 
 ---
 
@@ -739,6 +748,6 @@ PR-19 a PR-22 son la fase 4 (métricas y reportes): no bloquean la entrega. Las 
 ## 11. Decisiones pendientes
 
 - [x] Renombrar el repo a `siam-agenda-medica`.
-- [ ] Repo público o privado (define si la protección de ramas se aplica).
-- [ ] Nombre del menú de la Vista 2: el mockup dice "Mis citas"; se recomienda "Citas agendadas" porque la vista es de recepción y muestra todas las citas.
+- [x] Repo público (la protección de ramas se aplica).
+- [x] Nombre de la Vista 2: menú "Citas", título "Citas agendadas" (es de recepción y muestra todas las citas).
 - [ ] Hora 0 del kickoff (para poner las fechas de vencimiento en Trello).
