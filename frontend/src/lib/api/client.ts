@@ -1,14 +1,17 @@
 import type { ApiError } from '@/types/api';
+import { handleMock } from './mocks';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
+const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === 'true';
 
 export class ApiRequestError extends Error {
   constructor(
-    public readonly status: number,
+    public readonly statusCode: number,
     public readonly code: string,
+    message: string,
     public readonly details: ApiError['details'],
   ) {
-    super(`[${status}] ${code}`);
+    super(message);
     this.name = 'ApiRequestError';
   }
 }
@@ -17,15 +20,24 @@ export async function apiFetch<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const url = `${BASE_URL}${path}`;
+  if (USE_MOCKS) {
+    return handleMock<T>(path, options);
+  }
 
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-  });
+  const url = `${BASE_URL}${path}`;
+  let res: Response;
+
+  try {
+    res = await fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    });
+  } catch (error: any) {
+    throw new ApiRequestError(500, 'INTERNAL_ERROR', error.message ?? 'Network error', []);
+  }
 
   if (!res.ok) {
     const body: ApiError = await res.json().catch(() => ({
@@ -34,7 +46,7 @@ export async function apiFetch<T>(
       message: res.statusText,
       details: [],
     }));
-    throw new ApiRequestError(body.statusCode, body.code, body.details);
+    throw new ApiRequestError(body.statusCode, body.code, body.message, body.details);
   }
 
   if (res.status === 204) return undefined as T;

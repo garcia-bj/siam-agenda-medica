@@ -2,6 +2,8 @@ import type { AppointmentFilterStatus, Specialty } from '@/types/api';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
 
+import { ApiRequestError } from './client';
+
 export interface ReportQuery {
   from?: string;
   to?: string;
@@ -25,7 +27,7 @@ export async function downloadReport(query: ReportQuery = {}): Promise<void> {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({ message: res.statusText }));
-    throw new Error(body.message ?? 'Error al descargar el reporte');
+    throw new ApiRequestError(res.status, body.code || 'INTERNAL_ERROR', body.message ?? 'Error al descargar el reporte', body.details || []);
   }
 
   const disposition = res.headers.get('Content-Disposition') ?? '';

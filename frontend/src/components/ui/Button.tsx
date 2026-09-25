@@ -11,11 +11,13 @@ export default function Button({
   variant = 'primary',
   wide = false,
   className = '',
+  type = 'button',
   children,
   ...props
 }: ButtonProps) {
   return (
     <button
+      type={type}
       className={`btn btn--${variant}${wide ? ' btn--wide' : ''} ${className}`.trim()}
       {...props}
     >
