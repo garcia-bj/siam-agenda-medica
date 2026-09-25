@@ -215,15 +215,17 @@ WHERE "status" = 'ACTIVE';
 
 ## 6. Contrato de la API
 
-Base: `http://localhost:3001/api`. Fechas en ISO 8601 con zona (`2026-09-28T09:00:00-04:00`).
+> **La fuente de verdad es [`docs/api.md`](docs/api.md)** (request, respuesta y errores de cada endpoint). Aquí va el resumen.
+
+Base: `http://localhost:3001/api`. Fechas en ISO 8601 con zona (`2026-09-28T09:00:00-04:00`). Los días (`date`, `from`, `to`) son `YYYY-MM-DD` en `CLINIC_TZ` y los rangos incluyen los dos extremos.
 
 | Método | Ruta | Uso | Éxito | Errores |
 | --- | --- | --- | --- | --- |
 | GET | `/health` | Salud del servicio | 200 | – |
 | GET | `/availability?date=YYYY-MM-DD&specialty=` | Slots del día (`specialty` opcional) | 200 | 400 |
 | POST | `/appointments` | Reservar | 201 | 400, 409, 422 |
-| GET | `/appointments?specialty=&date=&status=` | Listar (por defecto solo `ACTIVE`, orden por hora) | 200 | 400 |
-| PATCH | `/appointments/:id` | Reprogramar (`{ "startTime" }`) | 200 | 400, 404, 409, 422 |
+| GET | `/appointments?specialty=&date=&status=` | Listar (`status`: `ACTIVE` por defecto, `CANCELLED` o `ALL`; orden por hora) | 200 | 400 |
+| PATCH | `/appointments/:id` | Reprogramar (`{ "startTime" }`, misma especialidad) | 200 | 400, 404, 409, 422 |
 | DELETE | `/appointments/:id` | Cancelar (soft delete, guarda `cancelledAt`) | 204 | 404, 409 |
 | GET | `/metrics/summary?from=&to=&specialty=` | Métricas del rango para el dashboard | 200 | 400 |
 | GET | `/reports/appointments?from=&to=&specialty=&status=&format=` | Descargar reporte CSV o Excel (fase 2) | 200 (archivo) | 400 |
@@ -240,7 +242,7 @@ Base: `http://localhost:3001/api`. Fechas en ISO 8601 con zona (`2026-09-28T09:0
 }
 ```
 
-Sábado o domingo: 200 con `isBusinessDay: false` y `slots: []`. Slots pasados: `available: false`.
+Sábado o domingo: 200 con `isBusinessDay: false` y `slots: []`. Slots pasados: `available: false`. Los slots van ordenados por `startTime` y luego por especialidad.
 
 `POST /appointments` recibe `{ patientName, patientEmail, specialty, startTime }` y devuelve la cita completa (`id`, campos, `endTime`, `status`, `cancelledAt`, `createdAt`). `GET /appointments` devuelve `{ "data": [ ...citas ] }`.
 
@@ -263,7 +265,7 @@ Sábado o domingo: 200 con `isBusinessDay: false` y `slots: []`. Slots pasados: 
 - `occupancyRate` = `active` / `capacity`; `cancellationRate` = `cancelled` / (`active` + `cancelled`); 0 si el divisor es 0.
 - `byDay` y `byHour` en `CLINIC_TZ`; `byHour` agrupa por hora de inicio (09:00 a 17:00).
 
-`GET /reports/appointments` (fase 2) recibe `from`, `to`, `specialty`, `status` (`ACTIVE`, `CANCELLED` o vacío) y `format` (`csv` o `xlsx`):
+`GET /reports/appointments` (fase 2) recibe `from`, `to`, `specialty`, `status` (`ACTIVE`, `CANCELLED` o `ALL`, por defecto `ALL`) y `format` (`csv` o `xlsx`):
 
 - Responde el archivo con `Content-Disposition: attachment; filename="siam-citas_2026-09-28_2026-10-02.csv"`, expuesto por CORS (`exposedHeaders`).
 - Columnas: ID, Paciente, Email, Especialidad, Fecha, Hora inicio, Hora fin, Estado, Creada. Fechas en `CLINIC_TZ`; especialidad y estado en español.
@@ -282,36 +284,9 @@ Sábado o domingo: 200 con `isBusinessDay: false` y `slots: []`. Slots pasados: 
 | 409 | `SLOT_TAKEN` | Slot ya reservado en esa especialidad |
 | 409 | `ALREADY_CANCELLED` | Reprogramar o cancelar una cita cancelada |
 | 422 | `OUTSIDE_BUSINESS_HOURS` | Fin de semana, fuera de 09:00–18:00, minutos distintos de 00/30 o fecha pasada |
+| 500 | `INTERNAL_ERROR` | Error inesperado (mensaje genérico; el detalle solo va al log) |
 
-**Tipos del front** (`frontend/src/types/api.ts`):
-
-```ts
-export type Specialty = 'MEDICINA_GENERAL' | 'PEDIATRIA' | 'CARDIOLOGIA' | 'DERMATOLOGIA';
-export type AppointmentStatus = 'ACTIVE' | 'CANCELLED';
-export type ReportFormat = 'csv' | 'xlsx';
-
-export interface Slot { specialty: Specialty; startTime: string; endTime: string; available: boolean; }
-
-export interface Appointment {
-  id: string; patientName: string; patientEmail: string; specialty: Specialty;
-  startTime: string; endTime: string; status: AppointmentStatus; cancelledAt: string | null; createdAt: string;
-}
-
-export interface MetricsSummary {
-  range: { from: string; to: string; businessDays: number };
-  totals: { active: number; cancelled: number; capacity: number; occupancyRate: number; cancellationRate: number };
-  bySpecialty: { specialty: Specialty; active: number; cancelled: number; capacity: number; occupancyRate: number }[];
-  byDay: { date: string; active: number; cancelled: number }[];
-  byHour: { hour: string; active: number }[];
-}
-
-export interface ApiError {
-  statusCode: number;
-  code: 'VALIDATION_ERROR' | 'NOT_FOUND' | 'SLOT_TAKEN' | 'ALREADY_CANCELLED' | 'OUTSIDE_BUSINESS_HOURS';
-  message: string;
-  details?: { field: string; message: string }[];
-}
-```
+**Tipos del front:** están en `frontend/src/types/api.ts` y tienen que coincidir con `docs/api.md`. Del lado del backend, las especialidades y sus nombres en español están en `backend/src/common/constants/specialties.ts`.
 
 ---
 
