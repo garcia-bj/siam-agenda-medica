@@ -1,0 +1,26 @@
+generator client {
+  provider               = "prisma-client"
+  output                 = "../src/generated/prisma"
+  moduleFormat           = "esm"
+  importFileExtension    = "js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Appointment {
+  id           String    @id @default(uuid())
+  patientName  String
+  patientEmail String
+  specialty    String
+  startTime    DateTime
+  endTime      DateTime
+  status       String    @default("ACTIVE")
+  cancelledAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([startTime])
+  @@index([specialty, startTime])
+}
