@@ -17,6 +17,8 @@ interface AppointmentListProps {
   hasActiveFilters?: boolean;
   onClearFilters?: () => void;
   onRetry?: () => void;
+  onCancel?: (appointment: Appointment) => void;
+  onReschedule?: (appointment: Appointment) => void;
 }
 
 export default function AppointmentList({
@@ -26,6 +28,8 @@ export default function AppointmentList({
   hasActiveFilters = false,
   onClearFilters,
   onRetry,
+  onCancel,
+  onReschedule,
 }: AppointmentListProps) {
   if (isLoading) {
     return (
@@ -97,6 +101,9 @@ export default function AppointmentList({
               <th scope="col" className="px-6 py-3.5">
                 Hora
               </th>
+              <th scope="col" className="px-6 py-3.5 text-right">
+                Acciones
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
@@ -127,6 +134,28 @@ export default function AppointmentList({
                   </td>
                   <td className="px-6 py-4 text-ink font-medium">
                     {timeFormatted}
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      {onReschedule && (
+                        <Button
+                          variant="ghost"
+                          onClick={() => onReschedule(appt)}
+                          className="!py-1.5 !px-3 text-xs"
+                        >
+                          Reprogramar
+                        </Button>
+                      )}
+                      {onCancel && (
+                        <Button
+                          variant="ghost"
+                          onClick={() => onCancel(appt)}
+                          className="!py-1.5 !px-3 text-xs text-danger hover:bg-danger/10"
+                        >
+                          Cancelar
+                        </Button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );
@@ -172,6 +201,29 @@ export default function AppointmentList({
                 <span>
                   Hora: <strong className="text-ink">{timeFormatted}</strong>
                 </span>
+              </div>
+
+              <div className="flex items-center gap-2 border-t border-line/60 pt-2.5">
+                {onReschedule && (
+                  <Button
+                    variant="ghost"
+                    wide
+                    onClick={() => onReschedule(appt)}
+                    className="text-xs"
+                  >
+                    Reprogramar
+                  </Button>
+                )}
+                {onCancel && (
+                  <Button
+                    variant="ghost"
+                    wide
+                    onClick={() => onCancel(appt)}
+                    className="text-xs text-danger hover:bg-danger/10"
+                  >
+                    Cancelar
+                  </Button>
+                )}
               </div>
             </article>
           );
