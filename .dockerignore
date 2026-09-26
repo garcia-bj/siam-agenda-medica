@@ -1,0 +1,19 @@
+# El contexto de build es la raíz del repo: solo entra el código fuente.
+.git
+.github
+.claude
+**/node_modules
+**/dist
+**/.next
+**/coverage
+**/*.tsbuildinfo
+backend/src/generated
+**/.env
+**/.env.*
+!**/.env.example
+**/*.db
+**/*.db-*
+e2e
+playwright-report
+test-results
+docs
