@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Fraunces, Instrument_Sans } from 'next/font/google';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Toaster } from 'sonner';
+
 import NavPills from '@/components/NavPills';
 import Providers from './providers';
 import './globals.css';
@@ -46,7 +46,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           <Header />
           {children}
-          <Toaster richColors position="bottom-right" />
         </Providers>
       </body>
     </html>
