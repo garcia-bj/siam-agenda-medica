@@ -15,9 +15,11 @@ interface BookingFormProps {
   specialty: Specialty;
   /** Called after the appointment is created successfully. */
   onBooked: () => void;
+  /** Called when the server responds with SLOT_TAKEN (409). */
+  onSlotTaken?: () => void;
 }
 
-export default function BookingForm({ slot, specialty, onBooked }: BookingFormProps) {
+export default function BookingForm({ slot, specialty, onBooked, onSlotTaken }: BookingFormProps) {
   const {
     register,
     handleSubmit,
@@ -33,32 +35,34 @@ export default function BookingForm({ slot, specialty, onBooked }: BookingFormPr
     },
   });
 
-  const mutation = useCreateAppointment();
+  const mutation = useCreateAppointment({ onSlotTaken });
 
   const onSubmit = handleSubmit((data) => {
-    mutation.mutate(data, {
-      onSuccess: () => onBooked(),
-      onError: (err) => {
-        if (err instanceof ApiRequestError) {
-          if (err.code === 'SLOT_TAKEN') {
-            setError('root', { message: err.message });
-          } else if (err.code === 'OUTSIDE_BUSINESS_HOURS') {
-            setError('root', { message: err.message });
-          } else if (err.code === 'VALIDATION_ERROR' && err.details.length > 0) {
-            for (const d of err.details) {
-              const field = d.field as keyof BookingFormValues;
-              if (field in bookingSchema.shape) {
-                setError(field, { message: d.message });
+    // Always use current props for specialty and startTime so changes
+    // after mount are picked up (e.g. user selects a different slot
+    // without unmounting this component).
+    mutation.mutate(
+      { ...data, specialty, startTime: slot.startTime },
+      {
+        onSuccess: () => onBooked(),
+        onError: (err) => {
+          if (err instanceof ApiRequestError) {
+            if (err.code === 'VALIDATION_ERROR' && err.details.length > 0) {
+              for (const d of err.details) {
+                const field = d.field as keyof BookingFormValues;
+                if (field in bookingSchema.shape) {
+                  setError(field, { message: d.message });
+                }
               }
+            } else {
+              setError('root', { message: err.message });
             }
           } else {
-            setError('root', { message: err.message });
+            setError('root', { message: 'Ocurrió un error inesperado. Inténtalo de nuevo.' });
           }
-        } else {
-          setError('root', { message: 'Ocurrió un error inesperado. Inténtalo de nuevo.' });
-        }
+        },
       },
-    });
+    );
   });
 
   return (

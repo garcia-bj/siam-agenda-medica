@@ -3,6 +3,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createAppointment } from '@/lib/api/appointments';
+import { ApiRequestError } from '@/lib/api/client';
 import type { Appointment } from '@/types/api';
 import { useCreateAppointment } from './useCreateAppointment';
 
@@ -75,6 +76,46 @@ describe('useCreateAppointment', () => {
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['availability'] });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['appointments'] });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['metrics'] });
+  });
+
+  it('invalida availability y llama onSlotTaken con error SLOT_TAKEN', async () => {
+    const slotTakenError = new ApiRequestError(409, 'SLOT_TAKEN', 'Ese horario acaba de ser tomado', []);
+    createMock.mockRejectedValue(slotTakenError);
+    const { wrapper, client } = createWrapper();
+    const invalidateSpy = vi.spyOn(client, 'invalidateQueries');
+    const onSlotTaken = vi.fn();
+
+    const { result } = renderHook(() => useCreateAppointment({ onSlotTaken }), { wrapper });
+
+    result.current.mutate({
+      patientName: 'Test',
+      patientEmail: 'test@test.com',
+      specialty: 'PEDIATRIA',
+      startTime: '2026-10-01T09:00:00-04:00',
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['availability'] });
+    expect(onSlotTaken).toHaveBeenCalledTimes(1);
+  });
+
+  it('no llama onSlotTaken con errores distintos a SLOT_TAKEN', async () => {
+    createMock.mockRejectedValue(new Error('Network error'));
+    const { wrapper } = createWrapper();
+    const onSlotTaken = vi.fn();
+
+    const { result } = renderHook(() => useCreateAppointment({ onSlotTaken }), { wrapper });
+
+    result.current.mutate({
+      patientName: 'Test',
+      patientEmail: 'test@test.com',
+      specialty: 'PEDIATRIA',
+      startTime: '2026-10-01T09:00:00-04:00',
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(onSlotTaken).not.toHaveBeenCalled();
   });
 
   it('expone el error de la API cuando falla', async () => {
