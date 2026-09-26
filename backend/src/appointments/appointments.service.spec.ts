@@ -11,9 +11,13 @@ const dto = { patientName: 'Ana Pérez', patientEmail: 'ana@correo.com', special
 
 function setup() {
   const create = vi.fn();
-  const prisma = { appointment: { create } } as unknown as PrismaService;
+  const findMany = vi.fn().mockResolvedValue([]);
+  const findUnique = vi.fn();
+  const update = vi.fn();
+  const updateMany = vi.fn();
+  const prisma = { appointment: { create, findMany, findUnique, update, updateMany } } as unknown as PrismaService;
   const service = new AppointmentsService(prisma, new ScheduleService());
-  return { service, create };
+  return { service, create, findMany, findUnique, update, updateMany };
 }
 
 const row = (data: Record<string, unknown>) => ({
@@ -23,6 +27,19 @@ const row = (data: Record<string, unknown>) => ({
   createdAt: new Date('2030-06-10T13:00:00.000Z'),
   ...data,
 });
+
+const stored = (data: Record<string, unknown> = {}) =>
+  row({
+    patientName: 'Ana Pérez',
+    patientEmail: 'ana@correo.com',
+    specialty: 'PEDIATRIA',
+    startTime: new Date('2030-06-17T14:00:00.000Z'),
+    endTime: new Date('2030-06-17T14:30:00.000Z'),
+    ...data,
+  });
+
+const prismaError = (code: string) =>
+  new Prisma.PrismaClientKnownRequestError('error de prueba', { code, clientVersion: '7.10.0' });
 
 async function expectApiError(promise: Promise<unknown>, statusCode: number, code: string) {
   const error = await promise.then(() => null, (e: unknown) => e);
@@ -77,7 +94,7 @@ describe('AppointmentsService.create', () => {
 
   it('traduce el P2002 del índice único a 409 SLOT_TAKEN con la especialidad en español', async () => {
     const { service, create } = setup();
-    create.mockRejectedValue(new Prisma.PrismaClientKnownRequestError('Unique constraint failed', { code: 'P2002', clientVersion: '7.10.0' }));
+    create.mockRejectedValue(prismaError('P2002'));
 
     const error = await service.create(dto, NOW).catch((e: unknown) => e);
 
@@ -95,5 +112,146 @@ describe('AppointmentsService.create', () => {
     create.mockRejectedValue(boom);
 
     await expect(service.create(dto, NOW)).rejects.toBe(boom);
+  });
+});
+
+describe('AppointmentsService.findAll', () => {
+  it('sin filtros trae solo las activas, ordenadas por hora', async () => {
+    const { service, findMany } = setup();
+
+    await service.findAll({});
+
+    expect(findMany).toHaveBeenCalledWith({ where: { status: 'ACTIVE' }, orderBy: { startTime: 'asc' } });
+  });
+
+  it('con status=ALL no filtra por estado', async () => {
+    const { service, findMany } = setup();
+
+    await service.findAll({ status: 'ALL', specialty: 'CARDIOLOGIA' });
+
+    expect(findMany.mock.calls[0][0].where).toEqual({ specialty: 'CARDIOLOGIA' });
+  });
+
+  it('date filtra por el día en hora de La Paz, no por el día UTC', async () => {
+    const { service, findMany } = setup();
+
+    await service.findAll({ date: '2030-06-17', status: 'CANCELLED' });
+
+    expect(findMany.mock.calls[0][0].where).toEqual({
+      status: 'CANCELLED',
+      startTime: { gte: new Date('2030-06-17T04:00:00.000Z'), lte: new Date('2030-06-18T03:59:59.999Z') },
+    });
+  });
+
+  it('devuelve { data } con las fechas en hora de La Paz', async () => {
+    const { service, findMany } = setup();
+    findMany.mockResolvedValue([stored()]);
+
+    const res = await service.findAll({});
+
+    expect(res.data).toHaveLength(1);
+    expect(res.data[0].startTime).toBe('2030-06-17T10:00:00-04:00');
+  });
+});
+
+describe('AppointmentsService.reschedule', () => {
+  const NEW_TIME = '2030-06-18T11:30:00-04:00';
+
+  it('mueve la cita activa y recalcula endTime', async () => {
+    const { service, findUnique, update } = setup();
+    findUnique.mockResolvedValue(stored());
+    update.mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve(stored(data)));
+
+    const res = await service.reschedule('id-1', { startTime: NEW_TIME }, NOW);
+
+    expect(update).toHaveBeenCalledWith({
+      where: { id: 'id-1', status: 'ACTIVE' },
+      data: { startTime: new Date('2030-06-18T15:30:00.000Z'), endTime: new Date('2030-06-18T16:00:00.000Z') },
+    });
+    expect(res).toMatchObject({ startTime: NEW_TIME, endTime: '2030-06-18T12:00:00-04:00', specialty: 'PEDIATRIA' });
+  });
+
+  it('al mismo horario responde la cita sin escribir en la base', async () => {
+    const { service, findUnique, update } = setup();
+    findUnique.mockResolvedValue(stored());
+
+    const res = await service.reschedule('id-1', { startTime: '2030-06-17T14:00:00Z' }, NOW);
+
+    expect(update).not.toHaveBeenCalled();
+    expect(res.startTime).toBe('2030-06-17T10:00:00-04:00');
+  });
+
+  it('404 si la cita no existe', async () => {
+    const { service, findUnique } = setup();
+    findUnique.mockResolvedValue(null);
+
+    await expectApiError(service.reschedule('nada', { startTime: NEW_TIME }, NOW), 404, 'NOT_FOUND');
+  });
+
+  it('409 ALREADY_CANCELLED si la cita está cancelada', async () => {
+    const { service, findUnique, update } = setup();
+    findUnique.mockResolvedValue(stored({ status: 'CANCELLED' }));
+
+    await expectApiError(service.reschedule('id-1', { startTime: NEW_TIME }, NOW), 409, 'ALREADY_CANCELLED');
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('422 si el nuevo horario está fuera de las reglas', async () => {
+    const { service, findUnique, update } = setup();
+    findUnique.mockResolvedValue(stored());
+
+    await expectApiError(
+      service.reschedule('id-1', { startTime: '2030-06-22T10:00:00-04:00' }, NOW),
+      422,
+      'OUTSIDE_BUSINESS_HOURS',
+    );
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('409 SLOT_TAKEN si el nuevo slot está ocupado (P2002)', async () => {
+    const { service, findUnique, update } = setup();
+    findUnique.mockResolvedValue(stored());
+    update.mockRejectedValue(prismaError('P2002'));
+
+    await expectApiError(service.reschedule('id-1', { startTime: NEW_TIME }, NOW), 409, 'SLOT_TAKEN');
+  });
+
+  it('409 ALREADY_CANCELLED si otra petición la canceló en el medio (P2025)', async () => {
+    const { service, findUnique, update } = setup();
+    findUnique.mockResolvedValue(stored());
+    update.mockRejectedValue(prismaError('P2025'));
+
+    await expectApiError(service.reschedule('id-1', { startTime: NEW_TIME }, NOW), 409, 'ALREADY_CANCELLED');
+  });
+});
+
+describe('AppointmentsService.cancel', () => {
+  it('pasa la cita a CANCELLED con cancelledAt, solo si sigue activa', async () => {
+    const { service, updateMany, findUnique } = setup();
+    updateMany.mockResolvedValue({ count: 1 });
+
+    await service.cancel('id-1');
+
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: 'id-1', status: 'ACTIVE' },
+      data: { status: 'CANCELLED', cancelledAt: expect.any(Date) },
+    });
+    expect(findUnique).not.toHaveBeenCalled();
+  });
+
+  it('404 si la cita no existe', async () => {
+    const { service, updateMany, findUnique } = setup();
+    updateMany.mockResolvedValue({ count: 0 });
+    findUnique.mockResolvedValue(null);
+
+    await expectApiError(service.cancel('nada'), 404, 'NOT_FOUND');
+  });
+
+  it('409 ALREADY_CANCELLED si ya estaba cancelada', async () => {
+    const { service, updateMany, findUnique } = setup();
+    updateMany.mockResolvedValue({ count: 0 });
+    findUnique.mockResolvedValue(stored({ status: 'CANCELLED' }));
+
+    await expectApiError(service.cancel('id-1'), 409, 'ALREADY_CANCELLED');
   });
 });
