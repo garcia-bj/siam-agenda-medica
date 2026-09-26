@@ -1,5 +1,5 @@
 import type { ValidationError } from '@nestjs/common';
-import { toDetails } from './setup-app.js';
+import { corsOrigin, toDetails } from './setup-app.js';
 
 const error = (property: string, constraints?: Record<string, string>, children: ValidationError[] = []): ValidationError => ({
   property,
@@ -35,5 +35,22 @@ describe('toDetails', () => {
 
   it('devuelve un arreglo vacío si no hay errores', () => {
     expect(toDetails([])).toEqual([]);
+  });
+});
+
+describe('corsOrigin', () => {
+  const original = process.env.CORS_ORIGIN;
+  afterEach(() => {
+    process.env.CORS_ORIGIN = original;
+  });
+
+  it('por defecto autoriza al front en localhost:3000', () => {
+    delete process.env.CORS_ORIGIN;
+    expect(corsOrigin()).toBe('http://localhost:3000');
+  });
+
+  it('usa CORS_ORIGIN cuando está definido (front publicado en otro puerto)', () => {
+    process.env.CORS_ORIGIN = 'http://localhost:3100';
+    expect(corsOrigin()).toBe('http://localhost:3100');
   });
 });
