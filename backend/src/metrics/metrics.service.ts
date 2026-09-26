@@ -86,12 +86,16 @@ export class MetricsService {
     }
 
     if (fromDt > toDt) {
-      throw new ApiException(400, 'VALIDATION_ERROR', 'La fecha from no puede ser posterior a to');
+      throw new ApiException(400, 'VALIDATION_ERROR', 'Datos inválidos', [
+        { field: 'from', message: 'No puede ser posterior a la fecha final' },
+      ]);
     }
 
-    const diffDays = Math.round(toDt.diff(fromDt, 'days').days);
-    if (diffDays > 92) {
-      throw new ApiException(400, 'VALIDATION_ERROR', 'El rango de fechas no puede ser mayor a 92 días');
+    const rangeDays = Math.round(toDt.diff(fromDt, 'days').days) + 1;
+    if (rangeDays > 92) {
+      throw new ApiException(400, 'VALIDATION_ERROR', 'Datos inválidos', [
+        { field: 'to', message: 'El rango no puede superar 92 días' },
+      ]);
     }
 
     // Contar días hábiles en el rango

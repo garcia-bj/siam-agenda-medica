@@ -34,34 +34,40 @@ describe('MetricsService', () => {
   });
 
   describe('Validación de rango de fechas', () => {
-    it('lanza 400 si from es posterior a to', async () => {
+    it('lanza 400 con details si from es posterior a to', async () => {
       await expect(
         service.getSummary({ from: '2026-10-02', to: '2026-09-28' }),
       ).rejects.toMatchObject({
         status: 400,
         response: expect.objectContaining({
           code: 'VALIDATION_ERROR',
+          details: expect.arrayContaining([
+            { field: 'from', message: 'No puede ser posterior a la fecha final' },
+          ]),
         }),
       });
     });
 
-    it('lanza 400 si el rango supera los 92 días', async () => {
-      // 2026-01-01 a 2026-04-10 son 99 días
+    it('lanza 400 con details si el rango supera los 92 días inclusivos', async () => {
+      // 2026-01-01 a 2026-04-03 son 93 días contando ambos extremos
       await expect(
-        service.getSummary({ from: '2026-01-01', to: '2026-04-10' }),
+        service.getSummary({ from: '2026-01-01', to: '2026-04-03' }),
       ).rejects.toMatchObject({
         status: 400,
         response: expect.objectContaining({
           code: 'VALIDATION_ERROR',
+          details: expect.arrayContaining([
+            { field: 'to', message: 'El rango no puede superar 92 días' },
+          ]),
         }),
       });
     });
 
-    it('acepta un rango de hasta 92 días exactos', async () => {
-      // 2026-01-01 a 2026-04-03 son 92 días de diferencia
-      const result = await service.getSummary({ from: '2026-01-01', to: '2026-04-03' });
+    it('acepta un rango de hasta 92 días inclusivos exactos', async () => {
+      // 2026-01-01 a 2026-04-02 son 92 días contando ambos extremos (31 + 28 + 31 + 2)
+      const result = await service.getSummary({ from: '2026-01-01', to: '2026-04-02' });
       expect(result.range.from).toBe('2026-01-01');
-      expect(result.range.to).toBe('2026-04-03');
+      expect(result.range.to).toBe('2026-04-02');
     });
   });
 
@@ -74,6 +80,28 @@ describe('MetricsService', () => {
       expect(result.range.from).toBe('2026-09-28');
       expect(result.range.to).toBe('2026-10-02');
       expect(result.range.businessDays).toBe(5);
+    });
+
+    it('la semana actual con now en el borde (domingo 22:00 en La Paz, lunes en UTC) da la semana correcta', async () => {
+      // Domingo 2026-09-27 22:00 en La Paz (en UTC ya es 2026-09-28T02:00:00Z)
+      const sundayNight = '2026-09-27T22:00:00-04:00';
+      const result = await service.getSummary({}, sundayNight);
+
+      expect(result.range.from).toBe('2026-09-21');
+      expect(result.range.to).toBe('2026-09-25');
+      expect(result.range.businessDays).toBe(5);
+    });
+  });
+
+  describe('Límites del rango de consulta en UTC', () => {
+    it('el where de findMany usa gte 04:00Z del inicio y lte 03:59:59.999Z del día siguiente', async () => {
+      await service.getSummary({ from: '2026-09-28', to: '2026-10-02' });
+
+      expect(prismaMock.appointment.findMany).toHaveBeenCalledTimes(1);
+      const callArgs = prismaMock.appointment.findMany.mock.calls[0][0];
+
+      expect(callArgs.where.startTime.gte.toISOString()).toBe('2026-09-28T04:00:00.000Z');
+      expect(callArgs.where.startTime.lte.toISOString()).toBe('2026-10-03T03:59:59.999Z');
     });
   });
 

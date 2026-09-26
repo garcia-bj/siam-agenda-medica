@@ -214,7 +214,7 @@ describe('GET /api/metrics/summary (e2e)', () => {
   });
 
   describe('Validaciones y errores 400', () => {
-    it('400 VALIDATION_ERROR si from es posterior a to', async () => {
+    it('400 VALIDATION_ERROR si from es posterior a to (incluye details con field from)', async () => {
       const res = await request(app.getHttpServer())
         .get('/api/metrics/summary?from=2030-06-21&to=2030-06-17')
         .expect(400);
@@ -222,20 +222,39 @@ describe('GET /api/metrics/summary (e2e)', () => {
       expect(res.body).toMatchObject({
         statusCode: 400,
         code: 'VALIDATION_ERROR',
-        message: 'La fecha from no puede ser posterior a to',
       });
+      expect(res.body.details).toEqual(
+        expect.arrayContaining([
+          { field: 'from', message: 'No puede ser posterior a la fecha final' },
+        ]),
+      );
     });
 
-    it('400 VALIDATION_ERROR si el rango supera los 92 días', async () => {
+    it('400 VALIDATION_ERROR si el rango supera los 92 días inclusivos (incluye details con field to)', async () => {
+      // 2030-01-01 a 2030-04-03 son 93 días contando ambos extremos
       const res = await request(app.getHttpServer())
-        .get('/api/metrics/summary?from=2030-01-01&to=2030-05-01')
+        .get('/api/metrics/summary?from=2030-01-01&to=2030-04-03')
         .expect(400);
 
       expect(res.body).toMatchObject({
         statusCode: 400,
         code: 'VALIDATION_ERROR',
-        message: 'El rango de fechas no puede ser mayor a 92 días',
       });
+      expect(res.body.details).toEqual(
+        expect.arrayContaining([
+          { field: 'to', message: 'El rango no puede superar 92 días' },
+        ]),
+      );
+    });
+
+    it('200: acepta un rango de hasta 92 días inclusivos exactos', async () => {
+      // 2030-01-01 a 2030-04-02 son 92 días contando ambos extremos
+      const res = await request(app.getHttpServer())
+        .get('/api/metrics/summary?from=2030-01-01&to=2030-04-02')
+        .expect(200);
+
+      expect(res.body.range.from).toBe('2030-01-01');
+      expect(res.body.range.to).toBe('2030-04-02');
     });
 
     it('400 VALIDATION_ERROR si from tiene formato inválido o fecha inexistente', async () => {
