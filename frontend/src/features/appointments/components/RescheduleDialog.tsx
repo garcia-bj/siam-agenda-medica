@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { Appointment, Slot } from '@/types/api';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
@@ -29,16 +29,20 @@ export default function RescheduleDialog({
 
   const rescheduleMutation = useRescheduleAppointment();
 
-  useEffect(() => {
+  const [prevApptId, setPrevApptId] = useState<string | null>(null);
+
+  // Adjust state during render when target appointment or modal open state changes
+  const currentApptId = open && appointment ? appointment.id : null;
+  if (currentApptId !== prevApptId) {
+    setPrevApptId(currentApptId);
     if (appointment && open) {
-      // Initialize selected date to appointment date if available, or first bookable day
       const apptDate = appointment.startTime.split('T')[0];
       const initialDate = apptDate >= firstBookableDay() ? apptDate : firstBookableDay();
       setSelectedDate(initialDate);
       setSelectedSlot(null);
       setErrorMessage(null);
     }
-  }, [appointment, open]);
+  }
 
   if (!appointment) return null;
 
