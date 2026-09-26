@@ -5,7 +5,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter.js';
 /** Configuración global de la app. La usan main.ts y los tests e2e, para que prueben lo mismo que corre. */
 export function setupApp(app: INestApplication) {
   app.setGlobalPrefix('api');
-  app.enableCors({ origin: 'http://localhost:3000', exposedHeaders: ['Content-Disposition'] });
+  app.enableCors({ origin: corsOrigin(), exposedHeaders: ['Content-Disposition'] });
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -15,6 +15,11 @@ export function setupApp(app: INestApplication) {
     }),
   );
   app.useGlobalFilters(new HttpExceptionFilter());
+}
+
+/** Origen del front autorizado por CORS. En Docker cambia si el front se publica en otro puerto. */
+export function corsOrigin(): string {
+  return process.env.CORS_ORIGIN || 'http://localhost:3000';
 }
 
 export function toDetails(errors: ValidationError[], parent = ''): ErrorDetail[] {
