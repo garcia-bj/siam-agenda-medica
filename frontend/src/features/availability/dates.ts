@@ -10,6 +10,10 @@ const MONTHS = [
   'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
 ];
+const MONTHS_SHORT = [
+  'ene', 'feb', 'mar', 'abr', 'may', 'jun',
+  'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
+];
 
 const toUtc = (ymd: string) => new Date(`${ymd}T00:00:00Z`);
 const toYmd = (date: Date) => date.toISOString().slice(0, 10);
@@ -85,6 +89,15 @@ export function monthLabel(year: number, month: number): string {
 export function formatDayLong(ymd: string): string {
   const date = toUtc(ymd);
   return `${WEEKDAYS[date.getUTCDay()]} ${date.getUTCDate()} de ${MONTHS[date.getUTCMonth()]}`;
+}
+
+/** "Lun 28 sep 2026" */
+export function formatDayShort(ymd: string): string {
+  if (!ymd || ymd.length < 10) return '';
+  const date = toUtc(ymd.slice(0, 10));
+  if (isNaN(date.getTime())) return '';
+  const monthName = MONTHS_SHORT[date.getUTCMonth()];
+  return `${WEEKDAYS_SHORT[date.getUTCDay()]} ${date.getUTCDate()} ${monthName} ${date.getUTCFullYear()}`;
 }
 
 /** "Lun" */

@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import type { Appointment } from '@/types/api';
-import Button from '@/components/ui/Button';
 import AppointmentFilters from '@/features/appointments/components/AppointmentFilters';
 import AppointmentList from '@/features/appointments/components/AppointmentList';
 import CancelDialog from '@/features/appointments/components/CancelDialog';
@@ -47,8 +46,8 @@ export default function CitasPage() {
           </p>
         </div>
         <div>
-          <Link href="/">
-            <Button variant="primary">Nueva cita</Button>
+          <Link href="/" className="btn btn--primary">
+            Nueva cita
           </Link>
         </div>
       </div>

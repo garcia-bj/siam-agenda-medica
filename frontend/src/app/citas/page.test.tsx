@@ -14,17 +14,6 @@ const fetchMock = vi.mocked(fetchAppointments);
 
 const mockData: Appointment[] = [
   {
-    id: 'appt-1',
-    patientName: 'Carlos Méndez',
-    patientEmail: 'carlos@correo.com',
-    specialty: 'MEDICINA_GENERAL',
-    startTime: '2026-09-28T10:30:00-04:00',
-    endTime: '2026-09-28T11:00:00-04:00',
-    status: 'ACTIVE',
-    cancelledAt: null,
-    createdAt: '2026-09-25T08:00:00-04:00',
-  },
-  {
     id: 'appt-2',
     patientName: 'Ana Ruiz',
     patientEmail: 'ana@correo.com',
@@ -34,6 +23,17 @@ const mockData: Appointment[] = [
     status: 'ACTIVE',
     cancelledAt: null,
     createdAt: '2026-09-25T09:00:00-04:00',
+  },
+  {
+    id: 'appt-1',
+    patientName: 'Carlos Méndez',
+    patientEmail: 'carlos@correo.com',
+    specialty: 'MEDICINA_GENERAL',
+    startTime: '2026-09-28T10:30:00-04:00',
+    endTime: '2026-09-28T11:00:00-04:00',
+    status: 'ACTIVE',
+    cancelledAt: null,
+    createdAt: '2026-09-25T08:00:00-04:00',
   },
 ];
 
@@ -79,12 +79,19 @@ describe('CitasPage', () => {
     expect(screen.getAllByText('Pediatría').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Lun 28 sep 2026').length).toBeGreaterThan(0);
     expect(screen.getAllByText('10:30').length).toBeGreaterThan(0);
+
+    // Verify ordering by time (10:30 appointment appears before 11:30 appointment in document order)
+    const carlosElements = screen.getAllByText('Carlos Méndez');
+    const anaElements = screen.getAllByText('Ana Ruiz');
+    expect(carlosElements[0].compareDocumentPosition(anaElements[0])).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
   });
 
   it('shows "Mostrando N de M citas" counter and filters by specialty', async () => {
     fetchMock.mockImplementation((query) => {
       if (query?.specialty === 'PEDIATRIA') {
-        return Promise.resolve({ data: [mockData[1]] });
+        return Promise.resolve({ data: [mockData[0]] });
       }
       return Promise.resolve({ data: mockData });
     });
@@ -92,9 +99,15 @@ describe('CitasPage', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getAllByText('2').length).toBeGreaterThan(0);
+      expect(
+        screen.getByText((_, element) =>
+          Boolean(
+            element?.className?.includes('text-muted') &&
+              /Mostrando\s*2\s*de\s*2/.test(element.textContent || ''),
+          ),
+        ),
+      ).toBeInTheDocument();
     });
-    expect(screen.getAllByText(/Mostrando/).length).toBeGreaterThan(0);
 
     // Filter by Pediatria
     fireEvent.change(screen.getByLabelText('Especialidad'), {
@@ -102,7 +115,19 @@ describe('CitasPage', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('1')).toBeInTheDocument();
+      expect(fetchMock).toHaveBeenCalledWith({
+        status: 'ACTIVE',
+        specialty: 'PEDIATRIA',
+        date: undefined,
+      });
+      expect(
+        screen.getByText((_, element) =>
+          Boolean(
+            element?.className?.includes('text-muted') &&
+              /Mostrando\s*1\s*de\s*2/.test(element.textContent || ''),
+          ),
+        ),
+      ).toBeInTheDocument();
     });
     expect(screen.queryByText('Carlos Méndez')).not.toBeInTheDocument();
     expect(screen.getAllByText('Ana Ruiz').length).toBeGreaterThan(0);
@@ -111,7 +136,7 @@ describe('CitasPage', () => {
   it('resets filters when "Limpiar filtros" is clicked', async () => {
     fetchMock.mockImplementation((query) => {
       if (query?.specialty === 'PEDIATRIA') {
-        return Promise.resolve({ data: [mockData[1]] });
+        return Promise.resolve({ data: [mockData[0]] });
       }
       return Promise.resolve({ data: mockData });
     });

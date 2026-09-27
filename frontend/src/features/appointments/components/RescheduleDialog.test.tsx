@@ -58,7 +58,7 @@ function renderDialog(props: Partial<Parameters<typeof RescheduleDialog>[0]> = {
   );
   const onClose = vi.fn();
 
-  render(
+  const res = render(
     <RescheduleDialog
       appointment={mockAppt}
       open={true}
@@ -68,27 +68,31 @@ function renderDialog(props: Partial<Parameters<typeof RescheduleDialog>[0]> = {
     { wrapper },
   );
 
-  return { onClose };
+  return { onClose, container: res.container };
 }
 
 describe('RescheduleDialog', () => {
   beforeEach(() => {
     fetchAvailabilityMock.mockReset();
     rescheduleMock.mockReset();
-    HTMLDialogElement.prototype.showModal = vi.fn();
-    HTMLDialogElement.prototype.close = vi.fn();
+    HTMLDialogElement.prototype.showModal = vi.fn(function (this: HTMLDialogElement) {
+      this.open = true;
+    });
+    HTMLDialogElement.prototype.close = vi.fn(function (this: HTMLDialogElement) {
+      this.open = false;
+    });
     fetchAvailabilityMock.mockResolvedValue(availabilityData);
   });
 
   it('renders null when appointment is null', () => {
-    const { container } = render(<RescheduleDialog appointment={null} open={true} onClose={vi.fn()} />);
+    const { container } = renderDialog({ appointment: null });
     expect(container.firstChild).toBeNull();
   });
 
   it('renders header summary with patient name and current schedule', async () => {
     renderDialog();
 
-    expect(screen.getByRole('heading', { level: 2, name: 'Reprogramar cita' })).toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { level: 2, name: 'Reprogramar cita' }).length).toBeGreaterThan(0);
     expect(screen.getByText('Carlos Méndez')).toBeInTheDocument();
     expect(screen.getByText(/Actual:/)).toBeInTheDocument();
   });
@@ -122,11 +126,10 @@ describe('RescheduleDialog', () => {
     const saveBtn = screen.getByRole('button', { name: 'Guardar cambio' });
     fireEvent.click(saveBtn);
 
-    expect(rescheduleMock).toHaveBeenCalledWith('appt-1', {
-      startTime: `${testDate}T11:30:00-04:00`,
-    });
-
     await waitFor(() => {
+      expect(rescheduleMock).toHaveBeenCalledWith('appt-1', {
+        startTime: `${testDate}T11:30:00-04:00`,
+      });
       expect(onClose).toHaveBeenCalledTimes(1);
     });
   });

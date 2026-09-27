@@ -71,8 +71,8 @@ export default function AppointmentList({
             Limpiar filtros
           </Button>
         ) : (
-          <Link href="/">
-            <Button variant="primary">Agendar una cita</Button>
+          <Link href="/" className="btn btn--primary">
+            Agendar una cita
           </Link>
         )}
       </div>

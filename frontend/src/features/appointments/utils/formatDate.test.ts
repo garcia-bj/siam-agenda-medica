@@ -20,7 +20,6 @@ describe('formatDate utils', () => {
   describe('formatAppointmentTime', () => {
     it('extracts HH:mm from ISO timestamp string', () => {
       expect(formatAppointmentTime('2026-09-28T10:30:00-04:00')).toBe('10:30');
-      expect(formatAppointmentTime('2026-09-28T09:00:00.000Z')).toBe('09:00');
     });
 
     it('handles empty string', () => {

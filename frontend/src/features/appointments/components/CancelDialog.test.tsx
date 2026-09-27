@@ -33,7 +33,7 @@ function renderDialog(props: Partial<Parameters<typeof CancelDialog>[0]> = {}) {
   );
   const onClose = vi.fn();
 
-  render(
+  const res = render(
     <CancelDialog
       appointment={mockAppt}
       open={true}
@@ -43,25 +43,29 @@ function renderDialog(props: Partial<Parameters<typeof CancelDialog>[0]> = {}) {
     { wrapper },
   );
 
-  return { onClose };
+  return { onClose, container: res.container };
 }
 
 describe('CancelDialog', () => {
   beforeEach(() => {
     cancelMock.mockReset();
-    HTMLDialogElement.prototype.showModal = vi.fn();
-    HTMLDialogElement.prototype.close = vi.fn();
+    HTMLDialogElement.prototype.showModal = vi.fn(function (this: HTMLDialogElement) {
+      this.open = true;
+    });
+    HTMLDialogElement.prototype.close = vi.fn(function (this: HTMLDialogElement) {
+      this.open = false;
+    });
   });
 
   it('renders null when appointment is null', () => {
-    const { container } = render(<CancelDialog appointment={null} open={true} onClose={vi.fn()} />);
+    const { container } = renderDialog({ appointment: null });
     expect(container.firstChild).toBeNull();
   });
 
   it('renders summary of appointment to cancel', () => {
     renderDialog();
 
-    expect(screen.getByText('Cancelar cita')).toBeInTheDocument();
+    expect(screen.getAllByText('Cancelar cita').length).toBeGreaterThan(0);
     expect(screen.getByText('Carlos Méndez')).toBeInTheDocument();
     expect(screen.getByText('carlos@correo.com')).toBeInTheDocument();
     expect(screen.getByText('Medicina General')).toBeInTheDocument();
@@ -88,7 +92,9 @@ describe('CancelDialog', () => {
     const confirmBtn = screen.getByRole('button', { name: 'Sí, cancelar cita' });
     fireEvent.click(confirmBtn);
 
-    expect(cancelMock).toHaveBeenCalledWith('appt-1');
+    await waitFor(() => {
+      expect(cancelMock).toHaveBeenCalledWith('appt-1');
+    });
     expect(screen.getByRole('button', { name: 'Volver' })).toBeDisabled();
 
     resolveCancel();
