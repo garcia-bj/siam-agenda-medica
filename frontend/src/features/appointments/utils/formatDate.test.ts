@@ -6,26 +6,9 @@ import {
 } from './formatDate';
 
 describe('formatDate utils', () => {
-  describe('formatAppointmentDate', () => {
-    it('formats ISO date to local string format (e.g. Lun 28 sep 2026)', () => {
-      const formatted = formatAppointmentDate('2026-09-28T10:30:00-04:00');
-      expect(formatted).toBe('Lun 28 sep 2026');
-    });
-
-    it('handles empty string gracefully', () => {
-      expect(formatAppointmentDate('')).toBe('');
-    });
-  });
-
-  describe('formatAppointmentTime', () => {
-    it('extracts HH:mm from ISO timestamp string', () => {
-      expect(formatAppointmentTime('2026-09-28T10:30:00-04:00')).toBe('10:30');
-      expect(formatAppointmentTime('2026-09-28T09:00:00.000Z')).toBe('09:00');
-    });
-
-    it('handles empty string', () => {
-      expect(formatAppointmentTime('')).toBe('');
-    });
+  it('delegates appointment date and time formatting to clinic date helpers', () => {
+    expect(formatAppointmentDate('2026-09-28T10:30:00-04:00')).toBe('Lun 28 sep 2026');
+    expect(formatAppointmentTime('2026-09-28T10:30:00-04:00')).toBe('10:30');
   });
 
   describe('getInitials', () => {

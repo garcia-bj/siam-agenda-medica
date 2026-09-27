@@ -3,6 +3,7 @@ import {
   addDays,
   businessDaysFrom,
   firstBookableDay,
+  formatDayShort,
   formatDayLong,
   isSelectable,
   monthGrid,
@@ -78,6 +79,7 @@ describe('monthGrid', () => {
 describe('formatos', () => {
   it('formatea en español', () => {
     expect(formatDayLong('2026-09-28')).toBe('Lunes 28 de septiembre');
+    expect(formatDayShort('2026-09-28')).toBe('Lun 28 sep 2026');
     expect(monthLabel(2026, 8)).toBe('Septiembre 2026');
   });
 

@@ -4,11 +4,8 @@ import SpecialtyTag from '@/components/ui/SpecialtyTag';
 import EmptyState from '@/components/ui/EmptyState';
 import Spinner from '@/components/ui/Spinner';
 import Button from '@/components/ui/Button';
-import {
-  formatAppointmentDate,
-  formatAppointmentTime,
-  getInitials,
-} from '../utils/formatDate';
+import { formatDayShort, slotTime } from '@/features/availability/dates';
+import { getInitials } from '../utils/formatDate';
 
 interface AppointmentListProps {
   appointments: Appointment[];
@@ -67,8 +64,8 @@ export default function AppointmentList({
             Limpiar filtros
           </Button>
         ) : (
-          <Link href="/">
-            <Button variant="primary">Agendar una cita</Button>
+          <Link href="/" className="btn btn--primary">
+            Agendar una cita
           </Link>
         )}
       </div>
@@ -102,8 +99,8 @@ export default function AppointmentList({
           <tbody className="divide-y divide-line">
             {appointments.map((appt) => {
               const initials = getInitials(appt.patientName);
-              const dateFormatted = formatAppointmentDate(appt.startTime);
-              const timeFormatted = formatAppointmentTime(appt.startTime);
+              const dateFormatted = formatDayShort(appt.startTime.slice(0, 10));
+              const timeFormatted = slotTime(appt.startTime);
 
               return (
                 <tr key={appt.id} className="hover:bg-bg/50 transition-colors">
@@ -139,8 +136,8 @@ export default function AppointmentList({
       <div className="flex flex-col gap-3 md:hidden">
         {appointments.map((appt) => {
           const initials = getInitials(appt.patientName);
-          const dateFormatted = formatAppointmentDate(appt.startTime);
-          const timeFormatted = formatAppointmentTime(appt.startTime);
+          const dateFormatted = formatDayShort(appt.startTime.slice(0, 10));
+          const timeFormatted = slotTime(appt.startTime);
 
           return (
             <article

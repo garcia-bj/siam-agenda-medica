@@ -1,15 +1,16 @@
-import type { Specialty } from '@/types/api';
+import { SPECIALTIES, type Specialty } from '@/types/api';
 import Select from '@/components/ui/Select';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
+import { SPECIALTY_LABELS } from '@/features/availability/components/SpecialtyPills';
 import type { AppointmentFiltersState } from '../hooks/useAppointments';
 
 const SPECIALTY_OPTIONS: { value: string; label: string }[] = [
   { value: '', label: 'Todas las especialidades' },
-  { value: 'MEDICINA_GENERAL', label: 'Medicina General' },
-  { value: 'PEDIATRIA', label: 'Pediatría' },
-  { value: 'CARDIOLOGIA', label: 'Cardiología' },
-  { value: 'DERMATOLOGIA', label: 'Dermatología' },
+  ...SPECIALTIES.map((specialty) => ({
+    value: specialty,
+    label: SPECIALTY_LABELS[specialty],
+  })),
 ];
 
 interface AppointmentFiltersProps {

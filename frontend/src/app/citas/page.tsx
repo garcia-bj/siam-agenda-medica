@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import Button from '@/components/ui/Button';
 import AppointmentFilters from '@/features/appointments/components/AppointmentFilters';
 import AppointmentList from '@/features/appointments/components/AppointmentList';
 import {
@@ -39,11 +38,9 @@ export default function CitasPage() {
             Consulta y filtra todas las citas activas de la clínica.
           </p>
         </div>
-        <div>
-          <Link href="/">
-            <Button variant="primary">Nueva cita</Button>
-          </Link>
-        </div>
+        <Link href="/" className="btn btn--primary">
+          Nueva cita
+        </Link>
       </div>
 
       <AppointmentFilters

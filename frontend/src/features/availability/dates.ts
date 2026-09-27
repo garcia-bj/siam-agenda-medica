@@ -6,6 +6,10 @@ export const CLINIC_TZ = 'America/La_Paz';
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WEEKDAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 const WEEKDAYS_SHORT = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+const MONTHS_SHORT = [
+  'ene', 'feb', 'mar', 'abr', 'may', 'jun',
+  'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
+];
 const MONTHS = [
   'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
@@ -85,6 +89,12 @@ export function monthLabel(year: number, month: number): string {
 export function formatDayLong(ymd: string): string {
   const date = toUtc(ymd);
   return `${WEEKDAYS[date.getUTCDay()]} ${date.getUTCDate()} de ${MONTHS[date.getUTCMonth()]}`;
+}
+
+/** "Lun 28 sep 2026" */
+export function formatDayShort(ymd: string): string {
+  const date = toUtc(ymd);
+  return `${weekdayShort(ymd)} ${date.getUTCDate()} ${MONTHS_SHORT[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
 }
 
 /** "Lun" */

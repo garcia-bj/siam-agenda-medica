@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fetchAppointments } from '@/lib/api/appointments';
@@ -14,17 +14,6 @@ const fetchMock = vi.mocked(fetchAppointments);
 
 const mockData: Appointment[] = [
   {
-    id: 'appt-1',
-    patientName: 'Carlos Méndez',
-    patientEmail: 'carlos@correo.com',
-    specialty: 'MEDICINA_GENERAL',
-    startTime: '2026-09-28T10:30:00-04:00',
-    endTime: '2026-09-28T11:00:00-04:00',
-    status: 'ACTIVE',
-    cancelledAt: null,
-    createdAt: '2026-09-25T08:00:00-04:00',
-  },
-  {
     id: 'appt-2',
     patientName: 'Ana Ruiz',
     patientEmail: 'ana@correo.com',
@@ -34,6 +23,17 @@ const mockData: Appointment[] = [
     status: 'ACTIVE',
     cancelledAt: null,
     createdAt: '2026-09-25T09:00:00-04:00',
+  },
+  {
+    id: 'appt-1',
+    patientName: 'Carlos Méndez',
+    patientEmail: 'carlos@correo.com',
+    specialty: 'MEDICINA_GENERAL',
+    startTime: '2026-09-28T10:30:00-04:00',
+    endTime: '2026-09-28T11:00:00-04:00',
+    status: 'ACTIVE',
+    cancelledAt: null,
+    createdAt: '2026-09-25T08:00:00-04:00',
   },
 ];
 
@@ -79,12 +79,16 @@ describe('CitasPage', () => {
     expect(screen.getAllByText('Pediatría').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Lun 28 sep 2026').length).toBeGreaterThan(0);
     expect(screen.getAllByText('10:30').length).toBeGreaterThan(0);
+
+    const tableRows = within(screen.getByRole('table')).getAllByRole('row').slice(1);
+    expect(tableRows[0].textContent).toContain('Carlos Méndez');
+    expect(tableRows[1].textContent).toContain('Ana Ruiz');
   });
 
   it('shows "Mostrando N de M citas" counter and filters by specialty', async () => {
     fetchMock.mockImplementation((query) => {
       if (query?.specialty === 'PEDIATRIA') {
-        return Promise.resolve({ data: [mockData[1]] });
+        return Promise.resolve({ data: [mockData[0]] });
       }
       return Promise.resolve({ data: mockData });
     });
@@ -102,16 +106,23 @@ describe('CitasPage', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('1')).toBeInTheDocument();
+      expect(screen.getByText(/Mostrando/).parentElement).toHaveTextContent(
+        'Mostrando 1 de 2 citas',
+      );
     });
-    expect(screen.queryByText('Carlos Méndez')).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith({
+      status: 'ACTIVE',
+      specialty: 'PEDIATRIA',
+      date: undefined,
+    });
+    expect(screen.queryAllByText('Carlos Méndez')).toHaveLength(0);
     expect(screen.getAllByText('Ana Ruiz').length).toBeGreaterThan(0);
   });
 
   it('resets filters when "Limpiar filtros" is clicked', async () => {
     fetchMock.mockImplementation((query) => {
       if (query?.specialty === 'PEDIATRIA') {
-        return Promise.resolve({ data: [mockData[1]] });
+        return Promise.resolve({ data: [mockData[0]] });
       }
       return Promise.resolve({ data: mockData });
     });
