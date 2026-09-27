@@ -6,13 +6,13 @@ export const CLINIC_TZ = 'America/La_Paz';
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WEEKDAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 const WEEKDAYS_SHORT = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-const MONTHS = [
-  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
-];
 const MONTHS_SHORT = [
   'ene', 'feb', 'mar', 'abr', 'may', 'jun',
   'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
+];
+const MONTHS = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
 ];
 
 const toUtc = (ymd: string) => new Date(`${ymd}T00:00:00Z`);
@@ -93,11 +93,8 @@ export function formatDayLong(ymd: string): string {
 
 /** "Lun 28 sep 2026" */
 export function formatDayShort(ymd: string): string {
-  if (!ymd || ymd.length < 10) return '';
-  const date = toUtc(ymd.slice(0, 10));
-  if (isNaN(date.getTime())) return '';
-  const monthName = MONTHS_SHORT[date.getUTCMonth()];
-  return `${WEEKDAYS_SHORT[date.getUTCDay()]} ${date.getUTCDate()} ${monthName} ${date.getUTCFullYear()}`;
+  const date = toUtc(ymd);
+  return `${weekdayShort(ymd)} ${date.getUTCDate()} ${MONTHS_SHORT[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
 }
 
 /** "Lun" */

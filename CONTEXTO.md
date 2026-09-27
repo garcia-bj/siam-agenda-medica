@@ -697,6 +697,19 @@ pnpm dev          # backend en :3001 y frontend en :3000
 
 Si pnpm muestra "Ignored build scripts", correr `pnpm approve-builds` y aprobar o negar el paquete en `allowBuilds`.
 
+### Con Docker (un solo comando)
+
+```bash
+docker compose up --build        # front en http://localhost:3000 · API en http://localhost:3001/api
+docker compose down              # detiene; las citas quedan en el volumen siam-data
+docker compose down -v           # detiene y borra la base (el próximo up vuelve a cargar el seed)
+```
+
+- La primera vez que arranca con el volumen vacío, el backend aplica las migraciones y carga el seed. En los arranques siguientes solo migra: el seed no vuelve a correr y los datos persisten (`backend/docker-entrypoint.sh`).
+- Si los puertos 3000 o 3001 están ocupados en tu máquina: `WEB_PORT=3100 API_PORT=3101 docker compose up --build`. El compose ajusta solo la URL de la API del front (`NEXT_PUBLIC_API_URL`, se fija al compilar) y el CORS del backend (`CORS_ORIGIN`).
+- Las imágenes usan `node:24-bookworm-slim` (Debian, no Alpine: `better-sqlite3` necesita glibc) y pnpm 12 instalado con npm.
+- El front en Docker usa la API real (`NEXT_PUBLIC_USE_MOCKS=false`).
+
 ### Día a día (todos)
 
 ```bash

@@ -1,0 +1,38 @@
+# SIAM con un solo comando:  docker compose up --build
+# Front en http://localhost:3000 y API en http://localhost:3001/api.
+# Si esos puertos están ocupados en tu máquina:  WEB_PORT=3100 API_PORT=3101 docker compose up --build
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "${API_PORT:-3001}:3001"
+    environment:
+      DATABASE_URL: file:/app/data/siam.db
+      CLINIC_TZ: America/La_Paz
+      CORS_ORIGIN: http://localhost:${WEB_PORT:-3000}
+    volumes:
+      - siam-data:/app/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/api/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        # La llama el navegador del usuario, por eso apunta al puerto publicado del backend.
+        NEXT_PUBLIC_API_URL: http://localhost:${API_PORT:-3001}/api
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  siam-data:

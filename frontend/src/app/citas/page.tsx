@@ -45,11 +45,9 @@ export default function CitasPage() {
             Consulta y filtra todas las citas activas de la clínica.
           </p>
         </div>
-        <div>
-          <Link href="/" className="btn btn--primary">
-            Nueva cita
-          </Link>
-        </div>
+        <Link href="/" className="btn btn--primary">
+          Nueva cita
+        </Link>
       </div>
 
       <AppointmentFilters
@@ -67,8 +65,8 @@ export default function CitasPage() {
         hasActiveFilters={hasActiveFilters}
         onClearFilters={handleClearFilters}
         onRetry={refetch}
-        onCancel={(appt) => setAppointmentToCancel(appt)}
-        onReschedule={(appt) => setAppointmentToReschedule(appt)}
+        onCancel={(appointment) => setAppointmentToCancel(appointment)}
+        onReschedule={(appointment) => setAppointmentToReschedule(appointment)}
       />
 
       <CancelDialog

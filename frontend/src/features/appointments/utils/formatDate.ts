@@ -1,13 +1,12 @@
 import { formatDayShort, slotTime } from '@/features/availability/dates';
 
 export function formatAppointmentDate(isoString: string): string {
-  if (!isoString) return '';
-  return formatDayShort(isoString.slice(0, 10));
+  return isoString ? formatDayShort(isoString.slice(0, 10)) : '';
 }
 
 export function formatAppointmentTime(isoString: string): string {
   if (!isoString) return '';
-  return slotTime(isoString);
+  return isoString.includes('T') ? slotTime(isoString) : isoString;
 }
 
 export function getInitials(name: string): string {
