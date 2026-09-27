@@ -10,6 +10,7 @@ export function useCancelAppointment() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       queryClient.invalidateQueries({ queryKey: ['availability'] });
+      queryClient.invalidateQueries({ queryKey: ['metrics'] });
       toast.success('Cita cancelada con éxito');
     },
     onError: (error: unknown) => {

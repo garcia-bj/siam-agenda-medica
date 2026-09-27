@@ -1,6 +1,7 @@
 'use client';
 
 import type { Appointment } from '@/types/api';
+import { ApiRequestError } from '@/lib/api/client';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import SpecialtyTag from '@/components/ui/SpecialtyTag';
@@ -26,19 +27,27 @@ export default function CancelDialog({
   const dateFormatted = formatAppointmentDate(appointment.startTime);
   const timeFormatted = formatAppointmentTime(appointment.startTime);
 
+  const effectiveOnClose = cancelMutation.isPending ? () => {} : onClose;
+
   const handleConfirm = () => {
+    if (cancelMutation.isPending) return;
     cancelMutation.mutate(appointment.id, {
       onSuccess: () => {
         onClose();
+      },
+      onError: (err: unknown) => {
+        if (err instanceof ApiRequestError && (err.code === 'ALREADY_CANCELLED' || err.code === 'NOT_FOUND')) {
+          onClose();
+        }
       },
     });
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Cancelar cita">
+    <Modal open={open} onClose={effectiveOnClose} title="Cancelar cita">
       <div className="flex max-w-md flex-col gap-5">
         <div>
-          <h2 className="text-xl font-semibold text-ink">Cancelar cita</h2>
+          <p aria-hidden="true" className="text-xl font-semibold text-ink">Cancelar cita</p>
           <p className="mt-1 text-sm text-muted">
             ¿Estás seguro de que deseas cancelar esta cita médica? Esta acción liberará el horario para otros pacientes.
           </p>

@@ -16,6 +16,7 @@ export function useRescheduleAppointment() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       queryClient.invalidateQueries({ queryKey: ['availability'] });
+      queryClient.invalidateQueries({ queryKey: ['metrics'] });
       toast.success('Cita reprogramada con éxito');
     },
     onError: () => {

@@ -50,10 +50,10 @@ describe('CancelDialog', () => {
   beforeEach(() => {
     cancelMock.mockReset();
     HTMLDialogElement.prototype.showModal = vi.fn(function (this: HTMLDialogElement) {
-      this.open = true;
+      this.setAttribute('open', '');
     });
     HTMLDialogElement.prototype.close = vi.fn(function (this: HTMLDialogElement) {
-      this.open = false;
+      this.removeAttribute('open');
     });
   });
 
@@ -98,6 +98,32 @@ describe('CancelDialog', () => {
     expect(screen.getByRole('button', { name: 'Volver' })).toBeDisabled();
 
     resolveCancel();
+
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('disables confirm button while request is in-flight (double-click protection)', async () => {
+    cancelMock.mockReturnValue(new Promise<void>(() => {})); // never resolves
+
+    renderDialog();
+
+    const confirmBtn = screen.getByRole('button', { name: 'Sí, cancelar cita' });
+    fireEvent.click(confirmBtn);
+
+    // After the first click the button must be disabled, preventing a second submit
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Cancelando/i })).toBeDisabled();
+    });
+  });
+
+  it('calls onClose when Escape key closes the dialog', async () => {
+    cancelMock.mockResolvedValue(undefined);
+    const { onClose, container } = renderDialog();
+
+    const dialog = container.querySelector('dialog')!;
+    fireEvent(dialog, new Event('cancel'));
 
     await waitFor(() => {
       expect(onClose).toHaveBeenCalledTimes(1);

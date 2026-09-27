@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fetchAvailability } from '@/lib/api/availability';
 import { rescheduleAppointment } from '@/lib/api/appointments';
+import { ApiRequestError } from '@/lib/api/client';
 import { firstBookableDay } from '@/features/availability/dates';
 import type { Appointment, AvailabilityResponse, Slot } from '@/types/api';
 import RescheduleDialog from './RescheduleDialog';
@@ -76,10 +77,10 @@ describe('RescheduleDialog', () => {
     fetchAvailabilityMock.mockReset();
     rescheduleMock.mockReset();
     HTMLDialogElement.prototype.showModal = vi.fn(function (this: HTMLDialogElement) {
-      this.open = true;
+      this.setAttribute('open', '');
     });
     HTMLDialogElement.prototype.close = vi.fn(function (this: HTMLDialogElement) {
-      this.open = false;
+      this.removeAttribute('open');
     });
     fetchAvailabilityMock.mockResolvedValue(availabilityData);
   });
@@ -92,7 +93,8 @@ describe('RescheduleDialog', () => {
   it('renders header summary with patient name and current schedule', async () => {
     renderDialog();
 
-    expect(screen.getAllByRole('heading', { level: 2, name: 'Reprogramar cita' }).length).toBeGreaterThan(0);
+    // Modal renders an sr-only <h2> with the same title; use getAllByText to avoid strict single-match
+    expect(screen.getAllByText('Reprogramar cita').length).toBeGreaterThan(0);
     expect(screen.getByText('Carlos Méndez')).toBeInTheDocument();
     expect(screen.getByText(/Actual:/)).toBeInTheDocument();
   });
@@ -134,12 +136,39 @@ describe('RescheduleDialog', () => {
     });
   });
 
-  it('shows error banner when API returns 409 slot taken', async () => {
-    rescheduleMock.mockRejectedValue({
-      statusCode: 409,
-      code: 'SLOT_TAKEN',
-      message: 'El horario ya está ocupado',
+  it('disables save button while request is in-flight (double-click protection)', async () => {
+    rescheduleMock.mockReturnValue(new Promise(() => {})); // never resolves
+
+    renderDialog();
+
+    const freeSlotBtn = await screen.findByRole('button', { name: '11:30, libre' });
+    fireEvent.click(freeSlotBtn);
+
+    const saveBtn = screen.getByRole('button', { name: 'Guardar cambio' });
+    fireEvent.click(saveBtn);
+
+    // After the first click the button must be disabled, preventing a second submit
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Guardando/i })).toBeDisabled();
     });
+  });
+
+  it('calls onClose when Escape key closes the dialog', async () => {
+    rescheduleMock.mockResolvedValue(undefined as never);
+    const { onClose, container } = renderDialog();
+
+    const dialog = container.querySelector('dialog')!;
+    fireEvent(dialog, new Event('cancel'));
+
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('shows error banner when API returns 409 SLOT_TAKEN', async () => {
+    rescheduleMock.mockRejectedValue(
+      new ApiRequestError(409, 'SLOT_TAKEN', 'El horario ya está ocupado', []),
+    );
 
     renderDialog();
 
@@ -152,6 +181,6 @@ describe('RescheduleDialog', () => {
     await waitFor(() => {
       expect(screen.getByRole('alert')).toBeInTheDocument();
     });
-    expect(screen.getByText('El horario ya está ocupado')).toBeInTheDocument();
+    expect(screen.getByText(/Ese horario se acaba de ocupar/)).toBeInTheDocument();
   });
 });

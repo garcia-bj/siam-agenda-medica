@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { Appointment, Slot } from '@/types/api';
+import { ApiRequestError } from '@/lib/api/client';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import SpecialtyTag from '@/components/ui/SpecialtyTag';
@@ -37,7 +38,8 @@ export default function RescheduleDialog({
     setPrevApptId(currentApptId);
     if (appointment && open) {
       const apptDate = appointment.startTime.split('T')[0];
-      const initialDate = apptDate >= firstBookableDay() ? apptDate : firstBookableDay();
+      const bookableDay = firstBookableDay();
+      const initialDate = apptDate >= bookableDay ? apptDate : bookableDay;
       setSelectedDate(initialDate);
       setSelectedSlot(null);
       setErrorMessage(null);
@@ -45,6 +47,8 @@ export default function RescheduleDialog({
   }
 
   if (!appointment) return null;
+
+  const effectiveOnClose = rescheduleMutation.isPending ? () => {} : onClose;
 
   const handleDateChange = (date: string) => {
     setSelectedDate(date);
@@ -58,7 +62,7 @@ export default function RescheduleDialog({
   };
 
   const handleConfirm = () => {
-    if (!selectedSlot) return;
+    if (!selectedSlot || rescheduleMutation.isPending) return;
 
     rescheduleMutation.mutate(
       {
@@ -70,16 +74,20 @@ export default function RescheduleDialog({
           onClose();
         },
         onError: (err: unknown) => {
-          const apiError = err as { code?: string; message?: string };
-          if (apiError?.code === 'SLOT_TAKEN' || apiError?.message) {
-            setErrorMessage(
-              apiError.message ||
-                'El horario seleccionado ya fue ocupado por otra cita. Por favor elige otro.',
-            );
+          if (err instanceof ApiRequestError) {
+            if (err.code === 'SLOT_TAKEN') {
+              setErrorMessage('Ese horario se acaba de ocupar. Por favor elige otro.');
+              setSelectedSlot(null);
+            } else if (err.code === 'ALREADY_CANCELLED' || err.code === 'NOT_FOUND') {
+              onClose();
+            } else {
+              setErrorMessage(err.message || 'Ocurrió un error al reprogramar la cita.');
+              setSelectedSlot(null);
+            }
           } else {
             setErrorMessage('Ocurrió un error al reprogramar la cita.');
+            setSelectedSlot(null);
           }
-          setSelectedSlot(null);
         },
       },
     );
@@ -88,11 +96,15 @@ export default function RescheduleDialog({
   const currentFormattedDate = formatAppointmentDate(appointment.startTime);
   const currentFormattedTime = formatAppointmentTime(appointment.startTime);
 
+  // Fixed base for the day strip — always starts at the first bookable day,
+  // regardless of which day is currently selected.
+  const stripFrom = firstBookableDay();
+
   return (
-    <Modal open={open} onClose={onClose} title="Reprogramar cita">
+    <Modal open={open} onClose={effectiveOnClose} title="Reprogramar cita">
       <div className="flex max-w-2xl flex-col gap-6">
         <div>
-          <h2 className="text-xl font-semibold text-ink">Reprogramar cita</h2>
+          <p aria-hidden="true" className="text-xl font-semibold text-ink">Reprogramar cita</p>
           <div className="mt-2 flex flex-wrap items-center gap-3 rounded-xl border border-line bg-bg p-3.5 text-sm">
             <span className="font-semibold text-ink">{appointment.patientName}</span>
             <SpecialtyTag specialty={appointment.specialty} />
@@ -116,7 +128,7 @@ export default function RescheduleDialog({
           {selectedDate && (
             <DayStrip
               value={selectedDate}
-              from={selectedDate}
+              from={stripFrom}
               onChange={handleDateChange}
               days={5}
             />
