@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { Appointment } from '@/types/api';
 import AppointmentList from './AppointmentList';
@@ -78,5 +78,30 @@ describe('AppointmentList', () => {
     expect(screen.getAllByText('Lun 28 sep 2026').length).toBeGreaterThan(0);
     expect(screen.getAllByText('10:30').length).toBeGreaterThan(0);
     expect(screen.getAllByText('11:30').length).toBeGreaterThan(0);
+  });
+
+  it('triggers onCancel and onReschedule handlers when buttons are clicked', () => {
+    const onCancel = vi.fn();
+    const onReschedule = vi.fn();
+
+    render(
+      <AppointmentList
+        appointments={mockAppointments}
+        onCancel={onCancel}
+        onReschedule={onReschedule}
+      />,
+    );
+
+    const cancelBtns = screen.getAllByRole('button', { name: 'Cancelar' });
+    const rescheduleBtns = screen.getAllByRole('button', { name: 'Reprogramar' });
+
+    expect(cancelBtns.length).toBeGreaterThan(0);
+    expect(rescheduleBtns.length).toBeGreaterThan(0);
+
+    fireEvent.click(cancelBtns[0]);
+    expect(onCancel).toHaveBeenCalledWith(mockAppointments[0]);
+
+    fireEvent.click(rescheduleBtns[0]);
+    expect(onReschedule).toHaveBeenCalledWith(mockAppointments[0]);
   });
 });

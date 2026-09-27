@@ -2,8 +2,11 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import type { Appointment } from '@/types/api';
 import AppointmentFilters from '@/features/appointments/components/AppointmentFilters';
 import AppointmentList from '@/features/appointments/components/AppointmentList';
+import CancelDialog from '@/features/appointments/components/CancelDialog';
+import RescheduleDialog from '@/features/appointments/components/RescheduleDialog';
 import {
   useAppointments,
   type AppointmentFiltersState,
@@ -11,6 +14,10 @@ import {
 
 export default function CitasPage() {
   const [filters, setFilters] = useState<AppointmentFiltersState>({});
+  const [appointmentToCancel, setAppointmentToCancel] =
+    useState<Appointment | null>(null);
+  const [appointmentToReschedule, setAppointmentToReschedule] =
+    useState<Appointment | null>(null);
 
   const {
     appointments,
@@ -58,6 +65,20 @@ export default function CitasPage() {
         hasActiveFilters={hasActiveFilters}
         onClearFilters={handleClearFilters}
         onRetry={refetch}
+        onCancel={(appointment) => setAppointmentToCancel(appointment)}
+        onReschedule={(appointment) => setAppointmentToReschedule(appointment)}
+      />
+
+      <CancelDialog
+        appointment={appointmentToCancel}
+        open={Boolean(appointmentToCancel)}
+        onClose={() => setAppointmentToCancel(null)}
+      />
+
+      <RescheduleDialog
+        appointment={appointmentToReschedule}
+        open={Boolean(appointmentToReschedule)}
+        onClose={() => setAppointmentToReschedule(null)}
       />
     </main>
   );

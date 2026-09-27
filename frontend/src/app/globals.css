@@ -151,4 +151,25 @@
   }
   .empty-state__title { font-size: 16px; font-weight: 600; color: var(--color-ink); }
   .empty-state__desc { font-size: 14px; color: var(--color-muted); }
+
+  /* --- Modal --- */
+  .modal {
+    border: none;
+    border-radius: 16px;
+    background: transparent;
+    padding: 0;
+    max-width: 90vw;
+    margin: auto;
+  }
+  .modal::backdrop {
+    background: rgba(23, 33, 43, 0.5);
+    backdrop-filter: blur(4px);
+  }
+  .modal-content {
+    background: var(--color-surface);
+    border-radius: 16px;
+    border: 1px solid var(--color-line);
+    padding: 24px;
+    max-width: 100%;
+  }
 }
