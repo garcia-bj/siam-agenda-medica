@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { Appointment, Slot } from '@/types/api';
 import { ApiRequestError } from '@/lib/api/client';
 import Modal from '@/components/ui/Modal';
@@ -25,8 +25,10 @@ export default function RescheduleDialog({
   onClose,
 }: RescheduleDialogProps) {
   const [selectedDate, setSelectedDate] = useState<string>('');
+  const [stripFrom, setStripFrom] = useState<string>('');
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const submitLockRef = useRef(false);
 
   const rescheduleMutation = useRescheduleAppointment();
 
@@ -40,6 +42,7 @@ export default function RescheduleDialog({
       const apptDate = appointment.startTime.split('T')[0];
       const bookableDay = firstBookableDay();
       const initialDate = apptDate >= bookableDay ? apptDate : bookableDay;
+      setStripFrom(bookableDay);
       setSelectedDate(initialDate);
       setSelectedSlot(null);
       setErrorMessage(null);
@@ -62,7 +65,8 @@ export default function RescheduleDialog({
   };
 
   const handleConfirm = () => {
-    if (!selectedSlot || rescheduleMutation.isPending) return;
+    if (!selectedSlot || submitLockRef.current || rescheduleMutation.isPending) return;
+    submitLockRef.current = true;
 
     rescheduleMutation.mutate(
       {
@@ -81,7 +85,7 @@ export default function RescheduleDialog({
             } else if (err.code === 'ALREADY_CANCELLED' || err.code === 'NOT_FOUND') {
               onClose();
             } else {
-              setErrorMessage(err.message || 'Ocurrió un error al reprogramar la cita.');
+              setErrorMessage('Ocurrió un error al reprogramar la cita.');
               setSelectedSlot(null);
             }
           } else {
@@ -89,16 +93,15 @@ export default function RescheduleDialog({
             setSelectedSlot(null);
           }
         },
+        onSettled: () => {
+          submitLockRef.current = false;
+        },
       },
     );
   };
 
   const currentFormattedDate = formatAppointmentDate(appointment.startTime);
   const currentFormattedTime = formatAppointmentTime(appointment.startTime);
-
-  // Fixed base for the day strip — always starts at the first bookable day,
-  // regardless of which day is currently selected.
-  const stripFrom = firstBookableDay();
 
   return (
     <Modal open={open} onClose={effectiveOnClose} title="Reprogramar cita">

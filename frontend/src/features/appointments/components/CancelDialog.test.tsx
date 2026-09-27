@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { cancelAppointment } from '@/lib/api/appointments';
+import { ApiRequestError } from '@/lib/api/client';
 import type { Appointment } from '@/types/api';
 import CancelDialog from './CancelDialog';
 
@@ -43,7 +44,7 @@ function renderDialog(props: Partial<Parameters<typeof CancelDialog>[0]> = {}) {
     { wrapper },
   );
 
-  return { onClose, container: res.container };
+  return { onClose, container: res.container, queryClient };
 }
 
 describe('CancelDialog', () => {
@@ -51,6 +52,7 @@ describe('CancelDialog', () => {
     cancelMock.mockReset();
     HTMLDialogElement.prototype.showModal = vi.fn(function (this: HTMLDialogElement) {
       this.setAttribute('open', '');
+      this.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
     });
     HTMLDialogElement.prototype.close = vi.fn(function (this: HTMLDialogElement) {
       this.removeAttribute('open');
@@ -72,6 +74,13 @@ describe('CancelDialog', () => {
     expect(screen.getByText('Lun 28 sep 2026 · 10:30 hs')).toBeInTheDocument();
   });
 
+  it('moves focus into the dialog when it opens', () => {
+    const { container } = renderDialog();
+    const dialog = container.querySelector('dialog')!;
+
+    expect(dialog.contains(document.activeElement)).toBe(true);
+  });
+
   it('calls onClose when "Volver" button is clicked', () => {
     const { onClose } = renderDialog();
 
@@ -91,8 +100,10 @@ describe('CancelDialog', () => {
 
     const confirmBtn = screen.getByRole('button', { name: 'Sí, cancelar cita' });
     fireEvent.click(confirmBtn);
+    fireEvent.click(confirmBtn);
 
     await waitFor(() => {
+      expect(cancelMock).toHaveBeenCalledTimes(1);
       expect(cancelMock).toHaveBeenCalledWith('appt-1');
     });
     expect(screen.getByRole('button', { name: 'Volver' })).toBeDisabled();
@@ -127,6 +138,22 @@ describe('CancelDialog', () => {
 
     await waitFor(() => {
       expect(onClose).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('closes and refreshes the agenda when the appointment was already cancelled', async () => {
+    cancelMock.mockRejectedValue(
+      new ApiRequestError(409, 'ALREADY_CANCELLED', 'La cita ya está cancelada', []),
+    );
+    const { onClose, queryClient } = renderDialog();
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sí, cancelar cita' }));
+
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalledTimes(1);
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['appointments'] });
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['metrics'] });
     });
   });
 });

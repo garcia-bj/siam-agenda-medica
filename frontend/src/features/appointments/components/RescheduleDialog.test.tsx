@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fetchAvailability } from '@/lib/api/availability';
 import { rescheduleAppointment } from '@/lib/api/appointments';
 import { ApiRequestError } from '@/lib/api/client';
-import { firstBookableDay } from '@/features/availability/dates';
+import { addDays, firstBookableDay, formatDayLong } from '@/features/availability/dates';
 import type { Appointment, AvailabilityResponse, Slot } from '@/types/api';
 import RescheduleDialog from './RescheduleDialog';
 
@@ -69,7 +69,7 @@ function renderDialog(props: Partial<Parameters<typeof RescheduleDialog>[0]> = {
     { wrapper },
   );
 
-  return { onClose, container: res.container };
+  return { onClose, container: res.container, queryClient };
 }
 
 describe('RescheduleDialog', () => {
@@ -78,6 +78,7 @@ describe('RescheduleDialog', () => {
     rescheduleMock.mockReset();
     HTMLDialogElement.prototype.showModal = vi.fn(function (this: HTMLDialogElement) {
       this.setAttribute('open', '');
+      this.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
     });
     HTMLDialogElement.prototype.close = vi.fn(function (this: HTMLDialogElement) {
       this.removeAttribute('open');
@@ -93,8 +94,7 @@ describe('RescheduleDialog', () => {
   it('renders header summary with patient name and current schedule', async () => {
     renderDialog();
 
-    // Modal renders an sr-only <h2> with the same title; use getAllByText to avoid strict single-match
-    expect(screen.getAllByText('Reprogramar cita').length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('heading', { name: 'Reprogramar cita' })).toHaveLength(1);
     expect(screen.getByText('Carlos Méndez')).toBeInTheDocument();
     expect(screen.getByText(/Actual:/)).toBeInTheDocument();
   });
@@ -114,6 +114,16 @@ describe('RescheduleDialog', () => {
     expect(screen.getByText(/Nueva cita:/)).toBeInTheDocument();
   });
 
+  it('keeps the day strip anchored at the first bookable date after selecting a later day', async () => {
+    renderDialog();
+
+    const firstDate = screen.getByRole('button', { name: formatDayLong(testDate) });
+    fireEvent.click(screen.getByRole('button', { name: formatDayLong(addDays(testDate, 2)) }));
+
+    expect(firstDate).toBeInTheDocument();
+    expect(firstDate).toHaveAttribute('aria-pressed', 'false');
+  });
+
   it('submits reschedule request, disables button, and closes modal on success', async () => {
     rescheduleMock.mockResolvedValue({
       ...mockAppt,
@@ -127,8 +137,10 @@ describe('RescheduleDialog', () => {
 
     const saveBtn = screen.getByRole('button', { name: 'Guardar cambio' });
     fireEvent.click(saveBtn);
+    fireEvent.click(saveBtn);
 
     await waitFor(() => {
+      expect(rescheduleMock).toHaveBeenCalledTimes(1);
       expect(rescheduleMock).toHaveBeenCalledWith('appt-1', {
         startTime: `${testDate}T11:30:00-04:00`,
       });
@@ -165,7 +177,7 @@ describe('RescheduleDialog', () => {
     });
   });
 
-  it('shows error banner when API returns 409 SLOT_TAKEN', async () => {
+  it('shows the SLOT_TAKEN message and reloads availability', async () => {
     rescheduleMock.mockRejectedValue(
       new ApiRequestError(409, 'SLOT_TAKEN', 'El horario ya está ocupado', []),
     );
@@ -180,7 +192,28 @@ describe('RescheduleDialog', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toBeInTheDocument();
+      expect(fetchAvailabilityMock).toHaveBeenCalledTimes(2);
     });
     expect(screen.getByText(/Ese horario se acaba de ocupar/)).toBeInTheDocument();
+  });
+
+  it.each([
+    [409, 'ALREADY_CANCELLED'],
+    [404, 'NOT_FOUND'],
+  ])('closes and refreshes the agenda for %s %s', async (statusCode, code) => {
+    rescheduleMock.mockRejectedValue(
+      new ApiRequestError(statusCode, code, 'La cita ya no está disponible', []),
+    );
+    const { onClose, queryClient } = renderDialog();
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    fireEvent.click(await screen.findByRole('button', { name: '11:30, libre' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar cambio' }));
+
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalledTimes(1);
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['appointments'] });
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['metrics'] });
+    });
   });
 });

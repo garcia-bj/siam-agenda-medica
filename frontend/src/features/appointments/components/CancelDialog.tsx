@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef } from 'react';
 import type { Appointment } from '@/types/api';
 import { ApiRequestError } from '@/lib/api/client';
 import Modal from '@/components/ui/Modal';
@@ -21,6 +22,7 @@ export default function CancelDialog({
   onClose,
 }: CancelDialogProps) {
   const cancelMutation = useCancelAppointment();
+  const submitLockRef = useRef(false);
 
   if (!appointment) return null;
 
@@ -30,7 +32,8 @@ export default function CancelDialog({
   const effectiveOnClose = cancelMutation.isPending ? () => {} : onClose;
 
   const handleConfirm = () => {
-    if (cancelMutation.isPending) return;
+    if (submitLockRef.current || cancelMutation.isPending) return;
+    submitLockRef.current = true;
     cancelMutation.mutate(appointment.id, {
       onSuccess: () => {
         onClose();
@@ -39,6 +42,9 @@ export default function CancelDialog({
         if (err instanceof ApiRequestError && (err.code === 'ALREADY_CANCELLED' || err.code === 'NOT_FOUND')) {
           onClose();
         }
+      },
+      onSettled: () => {
+        submitLockRef.current = false;
       },
     });
   };

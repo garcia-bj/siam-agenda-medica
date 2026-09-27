@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { rescheduleAppointment } from '@/lib/api/appointments';
+import { ApiRequestError } from '@/lib/api/client';
 import type { UpdateAppointmentDto } from '@/types/api';
 
 interface RescheduleParams {
@@ -19,8 +20,17 @@ export function useRescheduleAppointment() {
       queryClient.invalidateQueries({ queryKey: ['metrics'] });
       toast.success('Cita reprogramada con éxito');
     },
-    onError: () => {
+    onError: (error: unknown) => {
       queryClient.invalidateQueries({ queryKey: ['availability'] });
+
+      if (
+        error instanceof ApiRequestError &&
+        (error.code === 'ALREADY_CANCELLED' || error.code === 'NOT_FOUND')
+      ) {
+        queryClient.invalidateQueries({ queryKey: ['appointments'] });
+        queryClient.invalidateQueries({ queryKey: ['metrics'] });
+        toast.info('La cita ya no está activa. Se actualizó la agenda.');
+      }
     },
   });
 }
