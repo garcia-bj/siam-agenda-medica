@@ -5,9 +5,10 @@ import { AvailabilityModule } from './availability/availability.module.js';
 import { AppointmentsModule } from './appointments/appointments.module.js';
 import { DatabaseModule } from './database/database.module.js';
 import { MetricsModule } from './metrics/metrics.module.js';
+import { ReportsModule } from './reports/reports.module.js';
 
 @Module({
-  imports: [ScheduleModule, AvailabilityModule, AppointmentsModule, DatabaseModule, MetricsModule],
+  imports: [ScheduleModule, AvailabilityModule, AppointmentsModule, DatabaseModule, MetricsModule, ReportsModule],
   controllers: [AppController],
 })
 export class AppModule {}
