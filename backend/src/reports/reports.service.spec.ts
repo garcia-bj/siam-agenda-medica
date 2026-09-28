@@ -117,6 +117,45 @@ describe('ReportsService', () => {
       expect(csvText).toContain('"pepe,jr@correo.com"');
     });
 
+    it('mitiga inyección de fórmulas CSV anteponiendo comilla simple a campos que inician con =, +, -, @, tab o CR', async () => {
+      const fakeAppointments = [
+        {
+          id: 'apt-formula-1',
+          patientName: '=1+1',
+          patientEmail: '+cmd|"/C calc"!A0@correo.com',
+          specialty: 'MEDICINA_GENERAL',
+          startTime: new Date('2026-09-28T13:00:00Z'),
+          endTime: new Date('2026-09-28T13:30:00Z'),
+          status: 'ACTIVE',
+          createdAt: new Date('2026-09-25T18:00:00Z'),
+        },
+        {
+          id: 'apt-formula-2',
+          patientName: '=HYPERLINK("http://evil.test","Ver")',
+          patientEmail: '@malicious@correo.com',
+          specialty: 'PEDIATRIA',
+          startTime: new Date('2026-09-28T14:00:00Z'),
+          endTime: new Date('2026-09-28T14:30:00Z'),
+          status: 'ACTIVE',
+          createdAt: new Date('2026-09-25T18:00:00Z'),
+        },
+      ];
+
+      prismaMock.appointment.findMany.mockResolvedValueOnce(fakeAppointments);
+
+      const result = await service.generateReport({
+        from: '2026-09-28',
+        to: '2026-10-02',
+        format: 'csv',
+      });
+
+      const csvText = result.buffer.toString('utf-8');
+      expect(csvText).toContain("'=1+1");
+      expect(csvText).toContain("'+cmd");
+      expect(csvText).toContain('"\'=HYPERLINK(""http://evil.test"",""Ver"")"');
+      expect(csvText).toContain("'@malicious@correo.com");
+    });
+
     it('rango sin citas devuelve archivo CSV solo con encabezados', async () => {
       prismaMock.appointment.findMany.mockResolvedValueOnce([]);
 

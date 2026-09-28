@@ -138,10 +138,9 @@ export class ReportsService {
 
   private escapeCsvField(val: string | null | undefined): string {
     if (val === null || val === undefined) return '';
-    const str = String(val);
-    if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
-      return `"${str.replace(/"/g, '""')}"`;
-    }
+    let str = String(val);
+    if (/^[=+\-@\t\r]/.test(str)) str = `'${str}`;
+    if (/[",\r\n]/.test(str)) return `"${str.replace(/"/g, '""')}"`;
     return str;
   }
 

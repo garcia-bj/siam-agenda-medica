@@ -96,6 +96,29 @@ describe('GET /api/reports/appointments (e2e)', () => {
       expect(lines[2]).toContain('apt-cardio,Roberto Ruiz,roberto@correo.com,Cardiología,2030-06-17,10:00,10:30,Cancelada');
     });
 
+    it('200: mitiga inyección de fórmulas en CSV anteponiendo comilla simple', async () => {
+      await prisma.appointment.create({
+        data: {
+          id: 'apt-inj',
+          patientName: '=HYPERLINK("http://evil.test","Ver")',
+          patientEmail: 'victim@correo.com',
+          specialty: 'MEDICINA_GENERAL',
+          startTime: new Date('2030-06-17T13:00:00Z'),
+          endTime: new Date('2030-06-17T13:30:00Z'),
+          status: 'ACTIVE',
+          createdAt: new Date('2030-06-10T14:00:00Z'),
+        },
+      });
+
+      const res = await request(app.getHttpServer())
+        .get('/api/reports/appointments?from=2030-06-17&to=2030-06-21&format=csv')
+        .expect(200);
+
+      const buffer = res.body instanceof Buffer ? res.body : Buffer.from(res.text, 'utf-8');
+      const content = buffer.toString('utf-8');
+      expect(content).toContain('"\'=HYPERLINK(""http://evil.test"",""Ver"")"');
+    });
+
     it('200: descarga Excel con format=xlsx, encabezados en negrita y ancho ajustado', async () => {
       await prisma.appointment.create({
         data: {
