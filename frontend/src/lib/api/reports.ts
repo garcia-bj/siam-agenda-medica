@@ -1,8 +1,9 @@
 import type { AppointmentFilterStatus, Specialty } from '@/types/api';
+import { ApiRequestError } from './client';
+import { handleMock } from './mocks';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
-
-import { ApiRequestError } from './client';
+const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === 'true';
 
 export interface ReportQuery {
   from?: string;
@@ -21,23 +22,55 @@ export async function downloadReport(query: ReportQuery = {}): Promise<void> {
   if (query.format) params.set('format', query.format);
 
   const qs = params.toString();
-  const url = `${BASE_URL}/reports/appointments${qs ? `?${qs}` : ''}`;
+  const path = `/reports/appointments${qs ? `?${qs}` : ''}`;
 
-  const res = await fetch(url);
+  let blob: Blob;
+  let filename: string | undefined;
 
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({ message: res.statusText }));
-    throw new ApiRequestError(res.status, body.code || 'INTERNAL_ERROR', body.message ?? 'Error al descargar el reporte', body.details || []);
+  if (USE_MOCKS) {
+    const result = await handleMock<{ blob: Blob; filename: string }>(path, { method: 'GET' });
+    blob = result.blob;
+    filename = result.filename;
+  } else {
+    const url = `${BASE_URL}${path}`;
+    let res: Response;
+
+    try {
+      res = await fetch(url, {
+        method: 'GET',
+        credentials: 'include',
+      });
+    } catch {
+      throw new ApiRequestError(500, 'INTERNAL_ERROR', 'Error de conexión. Verifica tu red.', []);
+    }
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({ message: res.statusText }));
+      throw new ApiRequestError(res.status, body.code || 'INTERNAL_ERROR', body.message ?? 'Error al descargar el reporte', body.details || []);
+    }
+
+    blob = await res.blob();
+    const disposition = res.headers.get('Content-Disposition');
+    if (disposition) {
+      const match = disposition.match(/filename="([^"]+)"/);
+      if (match) {
+        filename = match[1];
+      } else {
+        const starMatch = disposition.match(/filename\*=UTF-8''([^;]+)/);
+        if (starMatch) {
+          filename = decodeURIComponent(starMatch[1]);
+        }
+      }
+    }
   }
 
-  const disposition = res.headers.get('Content-Disposition') ?? '';
-  const match = disposition.match(/filename="(.+)"/);
-  const filename = match?.[1] ?? 'reporte.csv';
+  const formatExt = query.format === 'xlsx' ? 'xlsx' : 'csv';
+  const finalFilename = filename || `reporte-${query.from || 'inicio'}-${query.to || 'fin'}.${formatExt}`;
 
-  const blob = await res.blob();
+  const objectUrl = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
+  a.href = objectUrl;
+  a.download = finalFilename;
   a.click();
-  URL.revokeObjectURL(a.href);
+  URL.revokeObjectURL(objectUrl);
 }

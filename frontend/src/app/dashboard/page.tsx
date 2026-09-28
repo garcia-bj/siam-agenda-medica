@@ -7,6 +7,7 @@ import KpiCard from '@/features/dashboard/components/KpiCard';
 import AppointmentsByDayChart from '@/features/dashboard/components/AppointmentsByDayChart';
 import SpecialtyOccupancy from '@/features/dashboard/components/SpecialtyOccupancy';
 import PeakHoursChart from '@/features/dashboard/components/PeakHoursChart';
+import ReportDownloadCard from '@/features/dashboard/components/ReportDownloadCard';
 import { useMetrics } from '@/features/dashboard/hooks/useMetrics';
 import {
   currentWeekRange,
@@ -192,9 +193,10 @@ export default function DashboardPage() {
             />
           </div>
 
-          {/* Peak Hours */}
-          <div className="dashboard-grid dashboard-grid--single">
+          {/* Peak Hours & Report */}
+          <div className="dashboard-grid">
             <PeakHoursChart data={metrics.byHour} />
+            <ReportDownloadCard defaultRange={range} defaultSpecialty={specialty} />
           </div>
         </>
       )}
