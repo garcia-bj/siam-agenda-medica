@@ -76,6 +76,12 @@
     transition: all 0.2s ease;
   }
   .nav-pill:hover { color: var(--color-ink); }
+  /* Móvil: el menú baja a su propia fila y ocupa todo el ancho. */
+  @media (max-width: 640px) {
+    .header-container { flex-wrap: wrap; gap: 12px; }
+    .nav-pills { width: 100%; justify-content: space-between; gap: 2px; }
+    .nav-pill { padding: 6px 10px; white-space: nowrap; }
+  }
   .nav-pill[aria-current="page"] {
     background: var(--color-surface);
     color: var(--color-primary);
