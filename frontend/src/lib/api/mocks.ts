@@ -181,13 +181,102 @@ export async function handleMock<T>(path: string, options: RequestInit): Promise
   }
 
   if (url.pathname === '/metrics/summary' && method === 'GET') {
-    // Basic mock for metrics so it doesn't fail
+    const fromParam = url.searchParams.get('from') || '2026-09-28';
+    const toParam = url.searchParams.get('to') || '2026-10-02';
+    const specParam = url.searchParams.get('specialty') as Specialty | null;
+
+    // Count business days in range
+    let businessDays = 0;
+    const cursor = new Date(`${fromParam}T12:00:00`);
+    const end = new Date(`${toParam}T12:00:00`);
+    while (cursor <= end) {
+      const wd = cursor.getDay();
+      if (wd !== 0 && wd !== 6) businessDays++;
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    const specs = specParam ? [specParam] : CLINIC_SPECIALTIES;
+    const capacity = businessDays * 18 * specs.length;
+
+    // Generate realistic mock appointments for the range
+    const mockActive: { specialty: Specialty; date: string; hour: string }[] = [];
+    const mockCancelled: { specialty: Specialty; date: string }[] = [];
+
+    const rangeCursor = new Date(`${fromParam}T12:00:00`);
+    while (rangeCursor <= end) {
+      const wd = rangeCursor.getDay();
+      if (wd !== 0 && wd !== 6) {
+        const dateStr = rangeCursor.toISOString().slice(0, 10);
+        for (const spec of specs) {
+          // Seed-based distribution: more appointments for Medicina General
+          const base = spec === 'MEDICINA_GENERAL' ? 6 : spec === 'PEDIATRIA' ? 5 : spec === 'CARDIOLOGIA' ? 4 : 3;
+          const count = base + (rangeCursor.getDate() % 3) - 1;
+          for (let i = 0; i < count; i++) {
+            const hourIdx = (i * 3 + rangeCursor.getDate()) % HOURS.length;
+            mockActive.push({ specialty: spec, date: dateStr, hour: HOURS[hourIdx] });
+          }
+          // ~1 cancellation every 3 days per specialty
+          if (rangeCursor.getDate() % 3 === 0) {
+            mockCancelled.push({ specialty: spec, date: dateStr });
+          }
+        }
+      }
+      rangeCursor.setDate(rangeCursor.getDate() + 1);
+    }
+
+    const totalActive = mockActive.length;
+    const totalCancelled = mockCancelled.length;
+    const occupancyRate = capacity > 0 ? Math.round((totalActive / capacity) * 1000) / 1000 : 0;
+    const cancellationRate = (totalActive + totalCancelled) > 0
+      ? Math.round((totalCancelled / (totalActive + totalCancelled)) * 1000) / 1000
+      : 0;
+
+    // bySpecialty
+    const bySpecialty = specs.map(spec => {
+      const active = mockActive.filter(a => a.specialty === spec).length;
+      const cancelled = mockCancelled.filter(c => c.specialty === spec).length;
+      const specCapacity = businessDays * 18;
+      return {
+        specialty: spec,
+        active,
+        cancelled,
+        capacity: specCapacity,
+        occupancyRate: specCapacity > 0 ? Math.round((active / specCapacity) * 1000) / 1000 : 0,
+      };
+    });
+
+    // byDay
+    const dayMap = new Map<string, { active: number; cancelled: number }>();
+    for (const a of mockActive) {
+      const entry = dayMap.get(a.date) || { active: 0, cancelled: 0 };
+      entry.active++;
+      dayMap.set(a.date, entry);
+    }
+    for (const c of mockCancelled) {
+      const entry = dayMap.get(c.date) || { active: 0, cancelled: 0 };
+      entry.cancelled++;
+      dayMap.set(c.date, entry);
+    }
+    const byDay = Array.from(dayMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, counts]) => ({ date, ...counts }));
+
+    // byHour
+    const hourMap = new Map<string, number>();
+    for (const a of mockActive) {
+      const h = a.hour.slice(0, 2) + ':00';
+      hourMap.set(h, (hourMap.get(h) || 0) + 1);
+    }
+    const byHour = Array.from(hourMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([hour, active]) => ({ hour, active }));
+
     return {
-      range: { from: '2026-09-28', to: '2026-10-02', businessDays: 5 },
-      totals: { active: 1, cancelled: 0, capacity: 360, occupancyRate: 0.003, cancellationRate: 0 },
-      bySpecialty: [],
-      byDay: [],
-      byHour: []
+      range: { from: fromParam, to: toParam, businessDays },
+      totals: { active: totalActive, cancelled: totalCancelled, capacity, occupancyRate, cancellationRate },
+      bySpecialty,
+      byDay,
+      byHour,
     } as unknown as T;
   }
 
