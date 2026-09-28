@@ -4,25 +4,7 @@
  * These are pure functions — no side effects — so they're easy to unit-test.
  */
 
-const CLINIC_TZ = 'America/La_Paz';
-
-/** Today as YYYY-MM-DD in the clinic timezone. */
-export function todayClinic(): string {
-  return new Date().toLocaleDateString('sv-SE', { timeZone: CLINIC_TZ });
-}
-
-/** ISO weekday: 1 = Monday … 7 = Sunday */
-function isoWeekday(dateStr: string): number {
-  const d = new Date(`${dateStr}T12:00:00`);
-  return d.getDay() === 0 ? 7 : d.getDay();
-}
-
-/** Add `n` days to a YYYY-MM-DD string. */
-function addDays(dateStr: string, n: number): string {
-  const d = new Date(`${dateStr}T12:00:00`);
-  d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
-}
+import { todayInClinic, weekday, addDays } from '@/features/availability/dates';
 
 export interface DateRange {
   from: string;
@@ -32,20 +14,21 @@ export interface DateRange {
 export type RangePreset = 'week' | 'month' | 'custom';
 
 /** Monday–Friday of the current week. */
-export function currentWeekRange(): DateRange {
-  const today = todayClinic();
-  const wd = isoWeekday(today);
-  const monday = addDays(today, 1 - wd);
+export function currentWeekRange(now: Date = new Date()): DateRange {
+  const today = todayInClinic(now);
+  const wd = weekday(today);
+  const isoWd = wd === 0 ? 7 : wd;
+  const monday = addDays(today, 1 - isoWd);
   const friday = addDays(monday, 4);
   return { from: monday, to: friday };
 }
 
 /** First and last day of the current calendar month. */
-export function currentMonthRange(): DateRange {
-  const today = todayClinic();
+export function currentMonthRange(now: Date = new Date()): DateRange {
+  const today = todayInClinic(now);
   const [y, m] = today.split('-').map(Number);
   const from = `${y}-${String(m).padStart(2, '0')}-01`;
-  const lastDay = new Date(y, m, 0).getDate();
+  const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
   const to = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
   return { from, to };
 }
@@ -70,9 +53,6 @@ export function formatRange(range: DateRange): string {
   const toMonth = monthName(range.to);
   const toYear = toD.getFullYear();
 
-  if (fromMonth === toMonth) {
-    return `${shortDay(range.from)} ${fromD.getUTCDate()} ${fromMonth} – ${shortDay(range.to)} ${toD.getUTCDate()} ${toMonth} ${toYear}`;
-  }
   return `${shortDay(range.from)} ${fromD.getUTCDate()} ${fromMonth} – ${shortDay(range.to)} ${toD.getUTCDate()} ${toMonth} ${toYear}`;
 }
 

@@ -14,6 +14,7 @@ import {
   findPeakHour,
 } from '@/features/dashboard/utils/dateRanges';
 import type { DateRange, RangePreset } from '@/features/dashboard/utils/dateRanges';
+import { ApiRequestError } from '@/lib/api/client';
 
 /* ── SVG Icons (inline to avoid extra deps) ────────────────────────── */
 
@@ -99,6 +100,15 @@ export default function DashboardPage() {
 
   const rangeLabel = formatRange(range);
 
+  const peak = metrics ? findPeakHour(metrics.byHour) : null;
+  const nextHour = peak
+    ? `${String(Number(peak.hour.slice(0, 2)) + 1).padStart(2, '0')}:00`
+    : null;
+
+  const userMessage = error instanceof ApiRequestError
+    ? error.message
+    : 'Error de conexión. Verifica tu red.';
+
   return (
     <main className="dashboard-page">
       <div className="dashboard-header">
@@ -123,7 +133,7 @@ export default function DashboardPage() {
         <div className="empty-state">
           <p className="empty-state__title">No se pudieron cargar las métricas</p>
           <p className="empty-state__desc">
-            {error instanceof Error ? error.message : 'Error desconocido'}
+            {userMessage}
           </p>
           <button className="btn btn--primary" onClick={() => refetch()} type="button">
             Reintentar
@@ -166,11 +176,9 @@ export default function DashboardPage() {
             <KpiCard
               icon={<ClockIcon />}
               label="HORA MÁS SOLICITADA"
-              value={findPeakHour(metrics.byHour)?.hour ?? '—'}
+              value={peak?.hour ?? '—'}
               subtitle={
-                findPeakHour(metrics.byHour)
-                  ? `${findPeakHour(metrics.byHour)!.active} citas entre ${findPeakHour(metrics.byHour)!.hour} y ${findPeakHour(metrics.byHour)!.hour.replace(/^\d+/, (h) => String(Number(h) + 1))}:00`
-                  : 'Sin datos'
+                peak ? `${peak.active} citas entre ${peak.hour} y ${nextHour}` : 'Sin datos'
               }
             />
           </div>
