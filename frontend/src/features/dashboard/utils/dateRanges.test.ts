@@ -58,11 +58,11 @@ describe('currentMonthRange', () => {
 describe('formatRange', () => {
   it('formats range within the same month correctly', () => {
     const result = formatRange({ from: '2026-09-21', to: '2026-09-25' });
-    expect(result).toBe('Lun 21 sept – Vie 25 sept 2026');
+    expect(result).toBe('Lun 21 sep – Vie 25 sep 2026');
   });
 
   it('formats range spanning different months correctly', () => {
     const result = formatRange({ from: '2026-09-28', to: '2026-10-02' });
-    expect(result).toBe('Lun 28 sept – Vie 2 oct 2026');
+    expect(result).toBe('Lun 28 sep – Vie 2 oct 2026');
   });
 });
