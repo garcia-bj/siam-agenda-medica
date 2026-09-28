@@ -5,6 +5,9 @@ import type {
   Specialty,
   CreateAppointmentDto,
   UpdateAppointmentDto,
+  Doctor,
+  CreateDoctorDto,
+  UpdateDoctorDto,
 } from '@/types/api';
 import { ApiRequestError } from './client';
 
@@ -57,6 +60,49 @@ const appointments: Appointment[] = [
     createdAt: '2026-09-25T08:00:00-04:00',
   }
 ];
+
+type MockDoctor = Omit<Doctor, 'upcomingAppointments'>;
+
+const doctors: MockDoctor[] = [
+  ['Dr. Martín Gutiérrez', 'MEDICINA_GENERAL'],
+  ['Dra. Sofía Arce', 'PEDIATRIA'],
+  ['Dr. Ricardo Salazar', 'CARDIOLOGIA'],
+  ['Dra. Camila Vega', 'DERMATOLOGIA'],
+].map(([name, specialty]) => ({
+  id: randomId(),
+  name,
+  specialty: specialty as Specialty,
+  active: true,
+  createdAt: '2026-09-25T08:00:00-04:00',
+  updatedAt: '2026-09-25T08:00:00-04:00',
+}));
+
+function upcomingFor(doctor: MockDoctor): number {
+  if (!doctor.active) return 0;
+  const now = Date.now();
+  return appointments.filter(
+    (a) =>
+      a.specialty === doctor.specialty &&
+      a.status === 'ACTIVE' &&
+      new Date(a.startTime).getTime() >= now,
+  ).length;
+}
+
+function toDoctor(doctor: MockDoctor): Doctor {
+  return { ...doctor, upcomingAppointments: upcomingFor(doctor) };
+}
+
+function assertSpecialtyFree(specialty: Specialty, excludeId?: string) {
+  const holder = doctors.find((d) => d.active && d.specialty === specialty && d.id !== excludeId);
+  if (holder) {
+    throw new ApiRequestError(
+      409,
+      'SPECIALTY_HAS_DOCTOR',
+      `${SPECIALTY_LABELS[specialty]} ya tiene un médico activo (${holder.name})`,
+      [],
+    );
+  }
+}
 
 function checkSlotTaken(specialty: Specialty, startTime: string, excludeId?: string): boolean {
   return appointments.some(a => 
@@ -178,6 +224,51 @@ export async function handleMock<T>(path: string, options: RequestInit): Promise
     appointments[idx].status = 'CANCELLED';
     appointments[idx].cancelledAt = new Date().toISOString();
     return undefined as unknown as T;
+  }
+
+  if (url.pathname === '/doctors' && method === 'GET') {
+    return { data: doctors.map(toDoctor) } as unknown as T;
+  }
+
+  if (url.pathname === '/doctors' && method === 'POST') {
+    const body = JSON.parse(options.body as string) as CreateDoctorDto;
+    assertSpecialtyFree(body.specialty);
+    const now = new Date().toISOString();
+    const doctor: MockDoctor = {
+      id: randomId(),
+      name: body.name.trim(),
+      specialty: body.specialty,
+      active: true,
+      createdAt: now,
+      updatedAt: now,
+    };
+    doctors.push(doctor);
+    return toDoctor(doctor) as unknown as T;
+  }
+
+  if (url.pathname.startsWith('/doctors/') && method === 'PATCH') {
+    const id = url.pathname.split('/')[2];
+    const body = JSON.parse(options.body as string) as UpdateDoctorDto;
+    const doctor = doctors.find((d) => d.id === id);
+    if (!doctor) throw new ApiRequestError(404, 'NOT_FOUND', 'El médico no existe', []);
+
+    if (body.active === false && doctor.active) {
+      const upcoming = upcomingFor(doctor);
+      if (upcoming > 0) {
+        throw new ApiRequestError(
+          409,
+          'DOCTOR_HAS_APPOINTMENTS',
+          `${doctor.name} tiene ${upcoming} ${upcoming === 1 ? 'cita próxima' : 'citas próximas'}`,
+          [],
+        );
+      }
+    }
+    if (body.active === true && !doctor.active) assertSpecialtyFree(doctor.specialty, doctor.id);
+
+    if (body.name !== undefined) doctor.name = body.name.trim();
+    if (body.active !== undefined) doctor.active = body.active;
+    doctor.updatedAt = new Date().toISOString();
+    return toDoctor(doctor) as unknown as T;
   }
 
   if (url.pathname === '/metrics/summary' && method === 'GET') {
