@@ -38,7 +38,6 @@ export async function downloadReport(query: ReportQuery = {}): Promise<void> {
     try {
       res = await fetch(url, {
         method: 'GET',
-        credentials: 'include',
       });
     } catch {
       throw new ApiRequestError(500, 'INTERNAL_ERROR', 'Error de conexión. Verifica tu red.', []);
