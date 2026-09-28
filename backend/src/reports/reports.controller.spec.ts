@@ -35,21 +35,23 @@ describe('ReportsController', () => {
   });
 
   it('configura headers HTTP de Content-Type, Content-Disposition y Content-Length y envía el buffer', async () => {
+    const setHeaderMock = vi.fn();
+    const endMock = vi.fn();
     const resMock = {
-      setHeader: vi.fn(),
-      end: vi.fn(),
+      setHeader: setHeaderMock,
+      end: endMock,
     } as unknown as Response;
 
     const query = { from: '2026-09-28', to: '2026-10-02', format: 'csv' as const };
     await controller.appointments(query, resMock);
 
     expect(serviceMock.generateReport).toHaveBeenCalledWith(query);
-    expect(resMock.setHeader).toHaveBeenCalledWith('Content-Type', 'text/csv; charset=utf-8');
-    expect(resMock.setHeader).toHaveBeenCalledWith(
+    expect(setHeaderMock).toHaveBeenCalledWith('Content-Type', 'text/csv; charset=utf-8');
+    expect(setHeaderMock).toHaveBeenCalledWith(
       'Content-Disposition',
       'attachment; filename="siam-citas_2026-09-28_2026-10-02.csv"',
     );
-    expect(resMock.setHeader).toHaveBeenCalledWith('Content-Length', Buffer.from('test-content').length);
-    expect(resMock.end).toHaveBeenCalledWith(Buffer.from('test-content'));
+    expect(setHeaderMock).toHaveBeenCalledWith('Content-Length', Buffer.from('test-content').length);
+    expect(endMock).toHaveBeenCalledWith(Buffer.from('test-content'));
   });
 });

@@ -166,7 +166,17 @@ export class ReportsService {
       let maxLen = column.header ? column.header.toString().length : 10;
       if (column.eachCell) {
         column.eachCell({ includeEmpty: false }, (cell) => {
-          const val = cell.value ? cell.value.toString() : '';
+          const rawVal = cell.value;
+          let val = '';
+          if (rawVal !== null && rawVal !== undefined) {
+            if (typeof rawVal === 'string' || typeof rawVal === 'number' || typeof rawVal === 'boolean') {
+              val = `${rawVal}`;
+            } else if (rawVal instanceof Date) {
+              val = rawVal.toISOString();
+            } else if (typeof rawVal === 'object' && 'text' in rawVal && typeof rawVal.text === 'string') {
+              val = rawVal.text;
+            }
+          }
           if (val.length > maxLen) {
             maxLen = val.length;
           }
