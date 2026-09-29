@@ -6,7 +6,7 @@
 ## Convenciones
 
 - Base: `http://localhost:3001/api`. Todo es JSON salvo la descarga de reportes.
-- **Fecha y hora** (`startTime`, `endTime`, `createdAt`, `cancelledAt`): ISO 8601 con desfase, en la zona de la clínica. Ejemplo: `2026-09-28T09:00:00-04:00`. El backend acepta cualquier desfase válido y lo guarda en UTC.
+- **Fecha y hora** (`startTime`, `endTime`, `createdAt`, `cancelledAt`, `updatedAt`): ISO 8601 con desfase, en la zona de la clínica. Ejemplo: `2026-09-28T09:00:00-04:00`. El backend acepta cualquier desfase válido y lo guarda en UTC.
 - **Día** (`date`, `from`, `to`): `YYYY-MM-DD`, interpretado como día calendario en `CLINIC_TZ` (`America/La_Paz`). Los rangos `from`–`to` **incluyen los dos extremos**.
 - Especialidades: `MEDICINA_GENERAL`, `PEDIATRIA`, `CARDIOLOGIA`, `DERMATOLOGIA`.
 - Estados de una cita: `ACTIVE`, `CANCELLED`.
@@ -63,7 +63,7 @@ Todos los errores, en todos los endpoints (incluida una ruta inexistente), tiene
   "message": "Datos inválidos",
   "details": [
     { "field": "patientEmail", "message": "Debe ser un email válido" },
-    { "field": "patientName", "message": "Debe tener entre 2 y 100 caracteres" }
+    { "field": "patientName", "message": "El nombre debe tener entre 2 y 100 caracteres" }
   ]
 }
 ```
@@ -149,7 +149,7 @@ Body:
 
 Respuesta `201`: el `Appointment` creado (con `doctorName` del médico activo).
 
-Errores: `400 VALIDATION_ERROR`, `409 SLOT_TAKEN`, `422 OUTSIDE_BUSINESS_HOURS`, `422 NO_DOCTOR`.
+Errores: `400 VALIDATION_ERROR`, `409 SLOT_TAKEN`, `422 OUTSIDE_BUSINESS_HOURS`, `422 NO_DOCTOR` (`"La especialidad Cardiología no tiene un médico activo"`).
 
 ## GET /appointments
 
