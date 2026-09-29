@@ -18,6 +18,11 @@ function mondayOf(now: Date) {
   return Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate() - daysSinceMonday);
 }
 
+/** Primer nombre en minúsculas y sin tildes, para un email válido: "María Flores" → "maria". */
+function emailUser(name: string) {
+  return name.split(' ')[0].normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+}
+
 /** Citas de ejemplo: semana de `now` + 2 siguientes, lunes a viernes, 3 por día. */
 export function buildAppointments(now = new Date()) {
   const monday = mondayOf(now);
@@ -41,7 +46,7 @@ export function buildAppointments(now = new Date()) {
 
         appointments.push({
           patientName: name,
-          patientEmail: `${name.split(' ')[0].toLowerCase()}${n}@correo.com`,
+          patientEmail: `${emailUser(name)}${n}@correo.com`,
           specialty,
           startTime,
           endTime: new Date(startTime.getTime() + 30 * 60 * 1000),
