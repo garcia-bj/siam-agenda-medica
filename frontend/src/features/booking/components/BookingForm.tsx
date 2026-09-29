@@ -23,12 +23,6 @@ interface BookingFormProps {
   onNoDoctor?: () => void;
 }
 
-function formatDoctorName(name: string) {
-  if (name.startsWith('Dr. ') || name.startsWith('Dra. ')) {
-    return name;
-  }
-  return `Dr./Dra. ${name}`;
-}
 
 export default function BookingForm({ slot, specialty, onBooked, onSlotTaken, onNoDoctor }: BookingFormProps) {
   const queryClient = useQueryClient();
@@ -85,7 +79,7 @@ export default function BookingForm({ slot, specialty, onBooked, onSlotTaken, on
     <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
       {slot.doctor && (
         <p className="text-[15px] font-medium text-ink">
-          Médico: {formatDoctorName(slot.doctor.name)}
+          Médico: {slot.doctor.name}
         </p>
       )}
 

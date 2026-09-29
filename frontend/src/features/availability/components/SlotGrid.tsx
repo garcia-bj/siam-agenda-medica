@@ -15,12 +15,6 @@ interface SlotGridProps {
   columns?: 3 | 6;
 }
 
-function formatDoctorName(name: string) {
-  if (name.startsWith('Dr. ') || name.startsWith('Dra. ')) {
-    return name;
-  }
-  return `Dr./Dra. ${name}`;
-}
 
 export default function SlotGrid({ date, specialty, onSelect, selected, currentSlot, columns = 3 }: SlotGridProps) {
   const { data, isPending, isError, refetch, isFetching } = useAvailability(date, specialty);
@@ -56,11 +50,10 @@ export default function SlotGrid({ date, specialty, onSelect, selected, currentS
 
   if (!doc) {
     return (
-      <div className="flex flex-col gap-3">
-        <p className="text-[15px] font-medium text-[#D93036]" aria-live="polite">
+      <div className="rounded-xl border border-dashed border-[#E8A765] bg-[#FFF7ED] p-4" aria-live="polite">
+        <p className="text-[15px] font-medium text-[#9A3412]">
           Esta especialidad no tiene médico disponible
         </p>
-        <div className={`grid gap-2.5 ${GRID[columns]}`}></div>
       </div>
     );
   }
@@ -71,7 +64,7 @@ export default function SlotGrid({ date, specialty, onSelect, selected, currentS
     return (
       <div className="flex flex-col gap-3">
         <p className="text-[15px] font-medium text-ink">
-          Atiende: {formatDoctorName(doc.name)}
+          Atiende: {doc.name}
         </p>
         <Message title="No quedan horarios libres" description="Prueba con otro día." />
       </div>
@@ -82,7 +75,7 @@ export default function SlotGrid({ date, specialty, onSelect, selected, currentS
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-0.5">
         <p className="text-[15px] font-medium text-ink">
-          Atiende: {formatDoctorName(doc.name)}
+          Atiende: {doc.name}
         </p>
         <p className="text-sm font-semibold text-primary-ink" aria-live="polite">
           {free} {free === 1 ? 'libre' : 'libres'}

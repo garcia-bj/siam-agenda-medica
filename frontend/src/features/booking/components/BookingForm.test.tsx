@@ -8,6 +8,7 @@ import type { Appointment, Slot, Specialty } from '@/types/api';
 import BookingForm from './BookingForm';
 
 vi.mock('@/lib/api/appointments', () => ({ createAppointment: vi.fn() }));
+vi.mock('sonner', () => ({ toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn() }) }));
 const createMock = vi.mocked(createAppointment);
 
 const slot: Slot = {
@@ -198,12 +199,15 @@ describe('BookingForm', () => {
     expect(screen.queryByText(/Médico:/)).not.toBeInTheDocument();
   });
 
-  it('maneja el error NO_DOCTOR llamando a onNoDoctor', async () => {
+  it('maneja el error NO_DOCTOR: toast, invalidateQueries y onNoDoctor', async () => {
+    const { toast } = await import('sonner');
     const onNoDoctor = vi.fn();
+
     createMock.mockRejectedValue(
       new ApiRequestError(422, 'NO_DOCTOR', 'La especialidad no tiene médico activo', []),
     );
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidateSpy = vi.spyOn(client, 'invalidateQueries');
     const wrapper = ({ children }: { children: ReactNode }) => (
       <QueryClientProvider client={client}>{children}</QueryClientProvider>
     );
@@ -222,5 +226,7 @@ describe('BookingForm', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar cita' }));
 
     await waitFor(() => expect(onNoDoctor).toHaveBeenCalledTimes(1));
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['availability'] });
+    expect(toast.error).toHaveBeenCalledWith('La especialidad no tiene médico activo', { duration: 5000 });
   });
 });

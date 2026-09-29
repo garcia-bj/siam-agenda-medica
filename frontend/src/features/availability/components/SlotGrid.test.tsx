@@ -97,13 +97,14 @@ describe('SlotGrid', () => {
   });
 
   it('muestra el aviso y no el nombre cuando el doctor es null', async () => {
-    fetchMock.mockResolvedValue(day([slot('09', false, null)]));
+    fetchMock.mockResolvedValue(day([slot('09', true, null)]));
     renderGrid();
     expect(await screen.findByText('Esta especialidad no tiene médico disponible')).toBeInTheDocument();
     expect(screen.queryByText(/Atiende:/)).not.toBeInTheDocument();
+    expect(screen.queryAllByRole('button', { name: /libre|ocupado/ })).toHaveLength(0);
   });
 
-  it('muestra "Atiende: Dr./Dra. Nombre" correcto cuando el doctor existe', async () => {
+  it('muestra "Atiende: Nombre" cuando el doctor existe', async () => {
     fetchMock.mockResolvedValue(day([slot('09', true, 'Dr. Juan Pérez')]));
     renderGrid();
     expect(await screen.findByText('Atiende: Dr. Juan Pérez')).toBeInTheDocument();
