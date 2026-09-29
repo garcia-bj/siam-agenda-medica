@@ -40,30 +40,38 @@ export class AppointmentsService {
    */
   async create(dto: CreateAppointmentDto, now?: DateTime | Date | string): Promise<AppointmentResponse> {
     const start = this.scheduleService.validateSlot(dto.startTime, now);
-
-    const activeDoctors = await this.doctorsService.findActiveBySpecialty(dto.specialty as Specialty);
-    const doctor = activeDoctors.get(dto.specialty as Specialty);
-    if (!doctor) {
-      throw new ApiException(
-        422,
-        'NO_DOCTOR',
-        `La especialidad ${SPECIALTY_LABELS[dto.specialty as Specialty]} no tiene un médico activo`,
-      );
-    }
+    const specialty = dto.specialty as Specialty;
 
     try {
-      const created = await this.prisma.appointment.create({
-        data: {
-          patientName: dto.patientName,
-          patientEmail: dto.patientEmail,
-          specialty: dto.specialty,
-          startTime: start.toJSDate(),
-          endTime: new Date(this.scheduleService.calculateEndTime(start)),
-        },
+      return await this.prisma.$transaction(async (tx) => {
+        const created = await tx.appointment.create({
+          data: {
+            patientName: dto.patientName,
+            patientEmail: dto.patientEmail,
+            specialty: dto.specialty,
+            startTime: start.toJSDate(),
+            endTime: new Date(this.scheduleService.calculateEndTime(start)),
+          },
+        });
+
+        const doctor = await tx.doctor.findFirst({
+          where: { specialty: dto.specialty, active: true },
+          select: { name: true },
+        });
+
+        if (!doctor) {
+          throw new ApiException(
+            422,
+            'NO_DOCTOR',
+            `La especialidad ${SPECIALTY_LABELS[specialty]} no tiene un médico activo`,
+          );
+        }
+
+        return this.toResponse(created, doctor.name);
       });
-      return this.toResponse(created, doctor.name);
     } catch (error) {
-      throw this.translateSlotTaken(error, dto.specialty as Specialty);
+      if (error instanceof ApiException) throw error;
+      throw this.translateSlotTaken(error, specialty);
     }
   }
 
@@ -100,34 +108,42 @@ export class AppointmentsService {
 
   /**
    * Mueve una cita activa a otro horario de la misma especialidad.
-   * Valida que la especialidad tenga un médico activo (422 NO_DOCTOR).
+   * La validación del médico activo se hace dentro de la transacción para evitar
+   * la carrera con PATCH /doctors (misma estrategia que create).
    */
   async reschedule(id: string, dto: UpdateAppointmentDto, now?: DateTime | Date | string): Promise<AppointmentResponse> {
     const current = await this.findActive(id);
     const start = this.scheduleService.validateSlot(dto.startTime, now);
-
-    const activeDoctors = await this.doctorsService.findActiveBySpecialty(current.specialty as Specialty);
-    const doctor = activeDoctors.get(current.specialty as Specialty);
-    if (!doctor) {
-      throw new ApiException(
-        422,
-        'NO_DOCTOR',
-        `La especialidad ${SPECIALTY_LABELS[current.specialty as Specialty]} no tiene un médico activo`,
-      );
-    }
-
-    if (start.toMillis() === current.startTime.getTime()) return this.toResponse(current, doctor.name);
+    const specialty = current.specialty as Specialty;
 
     try {
-      // `status: 'ACTIVE'` en el where: si otra petición la canceló en el medio, Prisma lanza P2025.
-      const updated = await this.prisma.appointment.update({
-        where: { id, status: 'ACTIVE' },
-        data: { startTime: start.toJSDate(), endTime: new Date(this.scheduleService.calculateEndTime(start)) },
+      return await this.prisma.$transaction(async (tx) => {
+        const doctor = await tx.doctor.findFirst({
+          where: { specialty: current.specialty, active: true },
+          select: { name: true },
+        });
+
+        if (!doctor) {
+          throw new ApiException(
+            422,
+            'NO_DOCTOR',
+            `La especialidad ${SPECIALTY_LABELS[specialty]} no tiene un médico activo`,
+          );
+        }
+
+        if (start.toMillis() === current.startTime.getTime()) return this.toResponse(current, doctor.name);
+
+        // `status: 'ACTIVE'` en el where: si otra petición la canceló en el medio, Prisma lanza P2025.
+        const updated = await tx.appointment.update({
+          where: { id, status: 'ACTIVE' },
+          data: { startTime: start.toJSDate(), endTime: new Date(this.scheduleService.calculateEndTime(start)) },
+        });
+        return this.toResponse(updated, doctor.name);
       });
-      return this.toResponse(updated, doctor.name);
     } catch (error) {
+      if (error instanceof ApiException) throw error;
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') throw alreadyCancelled();
-      throw this.translateSlotTaken(error, current.specialty as Specialty);
+      throw this.translateSlotTaken(error, specialty);
     }
   }
 
