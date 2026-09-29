@@ -6,7 +6,8 @@
     "dev:back": "pnpm --filter backend dev",
     "dev:front": "pnpm --filter frontend dev",
     "lint": "pnpm -r lint",
-    "test": "pnpm --filter backend --filter frontend test"
+    "test": "pnpm --filter backend --filter frontend test",
+    "test:e2e": "pnpm --filter e2e test"
   },
   "packageManager": "pnpm@12.6.0",
   "engines": {
