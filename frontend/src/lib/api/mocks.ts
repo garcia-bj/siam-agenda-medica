@@ -143,7 +143,10 @@ function getAvailability(date: string, specialty?: Specialty): AvailabilityRespo
   return { date, isBusinessDay: true, slots };
 }
 
+const SIMULATE_LATENCY = process.env.NODE_ENV !== 'test';
+
 async function delay() {
+  if (!SIMULATE_LATENCY) return;
   const ms = Math.floor(Math.random() * 300) + 300; // 300-600ms
   return new Promise(resolve => setTimeout(resolve, ms));
 }
