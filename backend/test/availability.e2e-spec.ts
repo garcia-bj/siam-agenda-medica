@@ -306,7 +306,7 @@ describe('Disponibilidad de slots (e2e)', () => {
 
     it('especialidad sin médico activo → doctor: null y sus slots salen con available: false', async () => {
       const dermDoc = await prisma.doctor.findFirst({ where: { specialty: 'DERMATOLOGIA', active: true } });
-      expect(dermDoc).toBeDefined();
+      expect(dermDoc).not.toBeNull();
 
       await prisma.doctor.update({ where: { id: dermDoc!.id }, data: { active: false } });
 

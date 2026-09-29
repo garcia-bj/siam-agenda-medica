@@ -51,7 +51,7 @@ describe('POST /api/appointments (e2e)', () => {
 
   it('422 NO_DOCTOR si se intenta reservar en especialidad sin médico activo', async () => {
     const dermDoc = await prisma.doctor.findFirst({ where: { specialty: 'DERMATOLOGIA', active: true } });
-    expect(dermDoc).toBeDefined();
+    expect(dermDoc).not.toBeNull();
 
     await prisma.doctor.update({ where: { id: dermDoc!.id }, data: { active: false } });
 
