@@ -2,6 +2,7 @@ import { Prisma } from '../generated/prisma/client.js';
 import { ApiException } from '../common/api-exception.js';
 import type { PrismaService } from '../database/prisma.service.js';
 import { ScheduleService } from '../schedule/schedule.service.js';
+import { DoctorsService } from '../doctors/doctors.service.js';
 import { AppointmentsService } from './appointments.service.js';
 
 // Lunes 17 de junio de 2030, 10:00 en La Paz (UTC-4) = 14:00 UTC
@@ -9,15 +10,31 @@ const MONDAY_10 = '2030-06-17T10:00:00-04:00';
 const NOW = '2030-06-10T09:00:00-04:00';
 const dto = { patientName: 'Ana Pérez', patientEmail: 'ana@correo.com', specialty: 'PEDIATRIA' as const, startTime: MONDAY_10 };
 
-function setup() {
+const defaultDoctorsMap = new Map([
+  ['PEDIATRIA', { id: 'doc-2', name: 'Dra. Sofía Arce' }],
+  ['CARDIOLOGIA', { id: 'doc-3', name: 'Dr. Ricardo Salazar' }],
+  ['MEDICINA_GENERAL', { id: 'doc-1', name: 'Dr. Martín Gutiérrez' }],
+  ['DERMATOLOGIA', { id: 'doc-4', name: 'Dra. Camila Vega' }],
+]);
+
+function setup(doctorsMap = defaultDoctorsMap) {
   const create = vi.fn();
   const findMany = vi.fn().mockResolvedValue([]);
   const findUnique = vi.fn();
   const update = vi.fn();
   const updateMany = vi.fn();
   const prisma = { appointment: { create, findMany, findUnique, update, updateMany } } as unknown as PrismaService;
-  const service = new AppointmentsService(prisma, new ScheduleService());
-  return { service, create, findMany, findUnique, update, updateMany };
+  const findActiveBySpecialty = vi.fn().mockImplementation((spec) => {
+    if (spec && typeof spec === 'string') {
+      const singleMap = new Map();
+      if (doctorsMap.has(spec)) singleMap.set(spec, doctorsMap.get(spec));
+      return Promise.resolve(singleMap);
+    }
+    return Promise.resolve(new Map(doctorsMap));
+  });
+  const doctorsService = { findActiveBySpecialty } as unknown as DoctorsService;
+  const service = new AppointmentsService(prisma, new ScheduleService(), doctorsService);
+  return { service, create, findMany, findUnique, update, updateMany, doctorsService, findActiveBySpecialty };
 }
 
 const row = (data: Record<string, unknown>) => ({
@@ -48,7 +65,7 @@ async function expectApiError(promise: Promise<unknown>, statusCode: number, cod
 }
 
 describe('AppointmentsService.create', () => {
-  it('guarda startTime y endTime (+30 min) en UTC y responde en hora de La Paz', async () => {
+  it('guarda startTime y endTime (+30 min) en UTC y responde en hora de La Paz con doctorName', async () => {
     const { service, create } = setup();
     create.mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve(row(data)));
 
@@ -62,12 +79,21 @@ describe('AppointmentsService.create', () => {
       patientName: 'Ana Pérez',
       patientEmail: 'ana@correo.com',
       specialty: 'PEDIATRIA',
+      doctorName: 'Dra. Sofía Arce',
       startTime: '2030-06-17T10:00:00-04:00',
       endTime: '2030-06-17T10:30:00-04:00',
       status: 'ACTIVE',
       cancelledAt: null,
       createdAt: '2030-06-10T09:00:00-04:00',
     });
+  });
+
+  it('422 NO_DOCTOR si la especialidad no tiene médico activo', async () => {
+    const emptyDoctors = new Map();
+    const { service, create } = setup(emptyDoctors);
+
+    await expectApiError(service.create(dto, NOW), 422, 'NO_DOCTOR');
+    expect(create).not.toHaveBeenCalled();
   });
 
   it('acepta un startTime en UTC y lo guarda como el mismo instante', async () => {
@@ -143,21 +169,32 @@ describe('AppointmentsService.findAll', () => {
     });
   });
 
-  it('devuelve { data } con las fechas en hora de La Paz', async () => {
-    const { service, findMany } = setup();
+  it('devuelve { data } con las fechas en hora de La Paz y doctorName sin N+1', async () => {
+    const { service, findMany, findActiveBySpecialty } = setup();
     findMany.mockResolvedValue([stored()]);
 
     const res = await service.findAll({});
 
     expect(res.data).toHaveLength(1);
     expect(res.data[0].startTime).toBe('2030-06-17T10:00:00-04:00');
+    expect(res.data[0].doctorName).toBe('Dra. Sofía Arce');
+    expect(findActiveBySpecialty).toHaveBeenCalledTimes(1);
+  });
+
+  it('si una cita tiene una especialidad sin médico activo actualmente, doctorName es null', async () => {
+    const { service, findMany } = setup(new Map());
+    findMany.mockResolvedValue([stored()]);
+
+    const res = await service.findAll({});
+
+    expect(res.data[0].doctorName).toBeNull();
   });
 });
 
 describe('AppointmentsService.reschedule', () => {
   const NEW_TIME = '2030-06-18T11:30:00-04:00';
 
-  it('mueve la cita activa y recalcula endTime', async () => {
+  it('mueve la cita activa y recalcula endTime incluyendo doctorName', async () => {
     const { service, findUnique, update } = setup();
     findUnique.mockResolvedValue(stored());
     update.mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve(stored(data)));
@@ -168,7 +205,24 @@ describe('AppointmentsService.reschedule', () => {
       where: { id: 'id-1', status: 'ACTIVE' },
       data: { startTime: new Date('2030-06-18T15:30:00.000Z'), endTime: new Date('2030-06-18T16:00:00.000Z') },
     });
-    expect(res).toMatchObject({ startTime: NEW_TIME, endTime: '2030-06-18T12:00:00-04:00', specialty: 'PEDIATRIA' });
+    expect(res).toMatchObject({
+      startTime: NEW_TIME,
+      endTime: '2030-06-18T12:00:00-04:00',
+      specialty: 'PEDIATRIA',
+      doctorName: 'Dra. Sofía Arce',
+    });
+  });
+
+  it('422 NO_DOCTOR si la especialidad no tiene médico activo al reprogramar', async () => {
+    const { service, findUnique, update } = setup(new Map());
+    findUnique.mockResolvedValue(stored());
+
+    await expectApiError(
+      service.reschedule('id-1', { startTime: NEW_TIME }, NOW),
+      422,
+      'NO_DOCTOR',
+    );
+    expect(update).not.toHaveBeenCalled();
   });
 
   it('al mismo horario responde la cita sin escribir en la base', async () => {
