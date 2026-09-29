@@ -1,163 +1,321 @@
-# SIAM – Sistema de Agenda Médica
-Aplicación web para agendar, reprogramar y cancelar citas médicas, con gestión de médicos y un dashboard de métricas.
+#SIAM Agenda Médica
+Sistema web para la gestión y reserva de citas médicas. Permite consultar disponibilidad, agendar citas, visualizar las citas registradas, cancelar y reagendar citas, gestionar médicos y consultar métricas mediante un dashboard.
 
----
+Índice
+Descripción del proyecto
 
-## Índice
+Tecnologías utilizadas
 
-1. [Qué hace](#1-qué-hace)
-2. [Tecnologías utilizadas](#2-tecnologías-utilizadas)
-3. [Requisitos previos](#3-requisitos-previos)
-4. [Cómo ejecutarlo](#4-cómo-ejecutarlo)
-   - [Opción A: con Docker](#opción-a-con-docker)
-   - [Opción B: sin Docker (pnpm)](#opción-b-sin-docker-pnpm)
-5. [Tests](#5-tests)
-6. [Estructura del proyecto](#6-estructura-del-proyecto)
-7. [Decisiones de diseño](#7-decisiones-de-diseño)
-8. [Mejoras futuras](#8-mejoras-futuras)
-9. [Solución de problemas](#9-solución-de-problemas)
+Requisitos previos
 
----
+Instalar pnpm
 
-## 1. Qué hace
+Clonar el proyecto
 
-| Vista | Ruta | Para qué sirve |
-|---|---|---|
-| **Vista 1 · Agendar cita** | `TODO /` | Elegir especialidad, fecha y horario libre, y confirmar con nombre y email del paciente. |
-| **Vista 2 · Citas agendadas** | `TODO /citas` | Listar citas activas ordenadas por fecha y hora, filtrar por especialidad y fecha, reprogramar o cancelar. |
-| Médicos | `TODO /medicos` | Registrar, editar, activar y desactivar médicos. |
-| Dashboard | `TODO /dashboard` | Métricas de la agenda (citas activas, ocupación, cancelaciones, hora pico). La descarga de reportes es **Fase 2**. |
+Configuración de variables de entorno
 
-**Reglas de negocio**
+Ejecutar el proyecto con Docker
 
-- Atención de lunes a viernes, de 09:00 a 18:00, en bloques de 30 minutos.
-- No se pueden elegir fines de semana ni fechas pasadas.
-- Especialidades: Medicina General, Pediatría, Cardiología y Dermatología.
-- Hay **un solo médico activo por especialidad**. Sin médico activo, la especialidad no tiene horarios para agendar.
-- Un médico con citas próximas no se puede desactivar.
-- Un horario ocupado no se puede reservar dos veces: si otra persona lo toma primero, la API responde `409` y la grilla se actualiza.
+Ejecutar el proyecto sin Docker
 
----
+Funcionalidades principales
 
-## 2. Tecnologías utilizadas
+Ejecutar pruebas unitarias
 
-| Área | Tecnologías |
-|---|---|
-| **Frontend** | Next.js, React, TypeScript, Tailwind CSS |
-| **Backend** | NestJS, TypeScript, SQLite, Prisma ORM |
-| **Gestión del proyecto** | pnpm, Git / GitHub, Docker |
-| **Testing** | Jest, React Testing Library, Playwright |
+Estructura del proyecto
 
----
+Decisiones de diseño
 
-## 3. Requisitos previos
+Estados contemplados
 
+Problemas conocidos
+
+Mejoras futuras
+
+Flujo principal del sistema
+
+Verificación desde cero
+
+Estado del proyecto
+
+1. Descripción del proyecto
+SIAM Agenda Médica busca facilitar la gestión de citas médicas mediante una interfaz web sencilla y responsive.
+
+El sistema permite:
+
+Consultar fechas y horarios disponibles.
+
+Agendar una cita médica.
+
+Visualizar las citas agendadas.
+
+Filtrar citas por fecha y especialidad.
+
+Cancelar una cita.
+
+Reagendar una cita.
+
+Registrar, editar, activar y desactivar médicos.
+
+Consultar métricas de la agenda mediante un dashboard.
+
+Validar errores de disponibilidad y conflictos de horarios.
+
+Ejecutar pruebas unitarias y pruebas E2E del flujo principal.
+
+Reglas de negocio
+Atención de lunes a viernes, de 09:00 a 18:00, en bloques de 30 minutos.
+
+No se pueden elegir fines de semana ni fechas pasadas.
+
+Especialidades: Medicina General, Pediatría, Cardiología y Dermatología.
+
+Cada especialidad tiene un solo médico activo. El paciente no elige médico: la cita se asigna al médico activo de la especialidad.
+
+Si una especialidad no tiene médico activo, no se pueden agendar citas en ella.
+
+Un médico con citas próximas no se puede desactivar.
+
+Un horario ocupado no se puede reservar dos veces.
+
+2. Tecnologías utilizadas
+Frontend
+Next.js
+
+React
+
+TypeScript
+
+Tailwind CSS
+
+Backend
+NestJS
+
+TypeScript
+
+SQLite
+
+Prisma ORM
+
+Gestión del proyecto
+pnpm
+
+Git / GitHub
+
+Docker
+
+Testing
+Jest
+
+React Testing Library
+
+Playwright
+
+3. Requisitos previos
 Antes de ejecutar el proyecto se necesita:
 
-- Git
-- Node.js
-- pnpm
-- Docker y Docker Desktop, únicamente si se desea utilizar la configuración con Docker.
+Git
+
+Node.js
+
+pnpm
+
+Docker y Docker Desktop, únicamente si se desea utilizar la configuración con Docker.
 
 Se recomienda utilizar una versión LTS de Node.js.
 
-### Instalar Node.js
-
-Descargar Node.js desde su página oficial: [Node.js](https://nodejs.org/)
+Instalar Node.js
+Descargar Node.js desde su página oficial: Node.js
 
 Comprobar la instalación:
 
-```bash
+Bash
 node --version
 npm --version
-```
+4. Instalar pnpm
+Si pnpm no está instalado, puede instalarse mediante npm:
 
-### Instalar pnpm
+Bash
+npm install -g pnpm
+Comprobar la instalación:
 
-Comprueba si ya lo tienes:
-
-```bash
+Bash
 pnpm --version
-```
+También puede instalarse mediante Corepack:
 
-Si no, instálalo con una de estas formas:
-
-```bash
-# Recomendada: Corepack (viene con Node.js)
+Bash
 corepack enable
 corepack prepare pnpm@latest --activate
+Después comprobar:
 
-# Alternativa: con npm
-npm install -g pnpm
-```
+Bash
+pnpm --version
+5. Clonar el proyecto
+Clonar el repositorio:
 
-Otras formas de instalación: <https://pnpm.io/installation>
+Bash
+git clone https://github.com/garcia-bj/siam-agenda-medica.git
+Entrar al proyecto:
 
----
+Bash
+cd siam-agenda-medica
+6. Configuración de variables de entorno
+Antes de iniciar el proyecto se deben configurar las variables de entorno necesarias para el backend y frontend.
+Crear los archivos .env correspondientes a partir de los archivos de ejemplo proporcionados por el proyecto.
 
-## 4. Cómo ejecutarlo
+Por ejemplo:
 
-Primero clona el repositorio:
+Bash
+cp backend/.env.example backend/.env
+Si el proyecto requiere variables adicionales para el frontend:
 
-```bash
-git clone TODO-url-del-repo
-cd TODO-nombre-del-repo
-```
+Bash
+cp frontend/.env.example frontend/.env.local
+Nota: No subir archivos .env con credenciales reales al repositorio.
 
-### Opción A: con Docker
+7. Ejecutar el proyecto con Docker
+Docker permite levantar los servicios necesarios mediante la configuración del proyecto.
 
-```bash
+Primero comprobar que Docker esté instalado:
+
+Bash
+docker --version
+docker compose version
+Desde la raíz del proyecto:
+
+Bash
 docker compose up --build
-```
+Una vez iniciados los servicios, acceder a: http://localhost:3000
 
-<!-- TODO: verificar el comando y si hace falta copiar un .env (cp .env.example .env). -->
+Para detener los servicios:
 
-Cuando termine de construir, abre <http://localhost:TODO-puerto>.
+Bash
+docker compose down
+Para detenerlos y eliminar los volúmenes asociados:
 
-Para detenerlo: `Ctrl + C` y luego `docker compose down`.
+Bash
+docker compose down -v
+8. Ejecutar el proyecto sin Docker
+Esta opción permite ejecutar el frontend y backend directamente con Node.js y pnpm.
 
-### Opción B: sin Docker (pnpm)
+Instalar dependencias (desde la raíz):
 
-```bash
+Bash
 pnpm install
+Iniciar el proyecto:
+
+Bash
 pnpm dev
-```
+El comando inicia los servicios configurados en el workspace:
 
-<!-- TODO: si hay variables de entorno, documentar: cp .env.example .env -->
+Frontend: http://localhost:3000
 
-Abre <http://localhost:TODO-puerto>.
+Backend: http://localhost:3001
 
-Si el proyecto tiene backend y frontend por separado, indica aquí cómo levantar cada uno (`TODO`).
+(Los puertos pueden variar según la configuración del proyecto).
 
----
+9. Funcionalidades principales
+Agendar una cita
+Desde la pantalla principal:
 
-## 5. Tests
+Seleccionar la especialidad.
 
-Con las dependencias ya instaladas (`pnpm install`):
+Seleccionar una fecha disponible.
 
-```bash
-# Tests unitarios
+Seleccionar un horario.
+
+Completar los datos solicitados (nombre del paciente y email).
+
+Confirmar la cita.
+
+Verificar el mensaje de confirmación.
+
+Si la especialidad no tiene un médico activo, la pantalla lo indica y pide elegir otra especialidad.
+
+Consultar citas
+Ingresar a /citas. La pantalla permite:
+
+Visualizar las citas.
+
+Consultar paciente, especialidad, médico, fecha y hora.
+
+Filtrar por especialidad y por fecha, o limpiar los filtros.
+
+Acceder a las acciones disponibles para cada cita.
+
+(En escritorio las citas se muestran en formato de tabla y en dispositivos móviles se adaptan a tarjetas).
+
+Cancelar una cita
+Desde /citas:
+
+Seleccionar una cita.
+
+Presionar Cancelar.
+
+Confirmar la acción.
+
+Verificar el estado actualizado.
+
+Reagendar una cita
+Desde la cita correspondiente:
+
+Seleccionar Reagendar.
+
+Elegir una nueva fecha.
+
+Seleccionar un horario disponible.
+
+Confirmar el cambio.
+
+Gestión de médicos
+Ingresar a /medicos. La pantalla permite:
+
+Ver el listado de médicos con su especialidad, estado (activo o inactivo) y cantidad de próximas citas.
+
+Ver cuántos médicos hay activos e inactivos, y mostrar u ocultar los inactivos.
+
+Ver qué especialidades no tienen médico activo.
+
+Registrar un médico: Presionar Registrar médico, escribir el nombre completo, elegir la especialidad (la lista muestra qué médico está activo en cada una y cuáles no tienen médico) y confirmar. Solo puede haber un médico activo por especialidad.
+
+Editar un médico: Presionar Editar en la fila del médico, modificar los datos y guardar los cambios.
+
+Activar o desactivar un médico: Presionar Desactivar (o Activar) en la fila del médico. Un médico con citas próximas no se puede desactivar: primero hay que cancelar o reagendar esas citas. Al desactivar al único médico de una especialidad, esta deja de tener horarios para agendar hasta que se registre o active otro médico.
+
+Dashboard
+Ingresar a /dashboard. El dashboard permite consultar métricas relacionadas con la agenda, incluyendo información sobre:
+
+Citas activas.
+
+Promedio de citas.
+
+Ocupación.
+
+Cancelaciones.
+
+Horarios más solicitados.
+
+Distribución de citas.
+
+También permite aplicar filtros de fechas y especialidad.
+
+10. Ejecutar pruebas unitarias
+Para ejecutar las pruebas unitarias:
+
+Bash
 pnpm test
+Para ejecutar las pruebas en modo watch:
 
-# Tests E2E
-pnpm test:e2e
-```
+Bash
+pnpm test:watch
+Para obtener cobertura:
 
-<!-- TODO: confirmar los nombres reales de los scripts en package.json. -->
+Bash
+pnpm test:coverage
+(Los comandos disponibles dependen de los scripts definidos en el package.json).
 
-**Antes del primer E2E**, instala los navegadores de la herramienta usada (`TODO`, ej. Playwright):
-
-```bash
-pnpm exec playwright install
-```
-
-Los E2E `TODO necesitan / no necesitan` que la app esté corriendo antes. `TODO explicar`.
-
----
-
-## 6. Estructura del proyecto
-
-```text
+11. Estructura del proyecto
+Plaintext
 siam-agenda-medica/
 │
 ├── backend/
@@ -174,60 +332,161 @@ siam-agenda-medica/
 ├── package.json
 ├── pnpm-workspace.yaml
 └── README.md
-```
+12. Decisiones de diseño
+Un médico activo por especialidad: Cada especialidad tiene un solo médico activo, por lo que el paciente elige especialidad, fecha y horario, y no médico. Esto simplifica el flujo de reserva y la grilla de disponibilidad. La contrapartida es que no hay agendas paralelas dentro de una misma especialidad.
 
-- `backend/`: API del proyecto.
-- `frontend/`: interfaz web.
-- `e2e/`: tests end-to-end con Playwright.
-- `pnpm-workspace.yaml`: define el monorepo; `pnpm install` en la raíz instala las dependencias de todos los paquetes.
-- `docker-compose.yml`: levanta el proyecto con Docker.
+Integridad de la agenda al gestionar médicos: No se puede desactivar a un médico con citas próximas, para evitar citas huérfanas. Si una especialidad se queda sin médico activo, la interfaz lo indica en lugar de mostrar horarios que no se podrían atender.
 
----
+Interfaz responsive: Se diseñó la interfaz considerando diferentes tamaños de pantalla (Móvil: ~375 px, Tablet: ~768 px, Escritorio: ~1280 px). En móvil se prioriza la visualización mediante tarjetas y controles accesibles, mientras que en escritorio se utiliza una distribución más amplia.
 
-## 7. Decisiones de diseño
+Reutilización de componentes: Se priorizó la reutilización de componentes existentes para evitar duplicación y mantener un comportamiento consistente (selección de días, disponibilidad de horarios, modales, tarjetas de citas, filtros, etc.).
 
-**Producto**
+Accesibilidad: Se utilizan elementos HTML semánticos, roles accesibles y etiquetas asociadas a los campos para facilitar la interacción con teclado y tecnologías de asistencia.
 
-- **Un médico activo por especialidad.** Simplifica la agenda: la especialidad determina el médico y el paciente no tiene que elegirlo. El costo es que no hay agenda paralela por especialidad.
-- **Bloques fijos de 30 minutos, lunes a viernes.** Una grilla única y predecible evita solapamientos y hace trivial calcular ocupación.
-- **Conflictos resueltos en el servidor (`409`).** La disponibilidad que ve el usuario puede quedar vieja; el servidor es quien decide. Ante un `409` la UI recarga la grilla y pide elegir otro horario.
-- **Cancelar libera el horario.** La cita cancelada deja de contar como activa, pero se conserva para las métricas de cancelación.
-- **Confirmación antes de acciones destructivas.** Cancelar exige un modal de confirmación; reprogramar muestra la cita actual y el resumen del cambio.
-- **Estados explícitos en la UI.** Validación por campo, carga, error de red con reintento, lista vacía y confirmación. Están diseñados como parte del flujo, no como casos de borde.
-- **Responsive.** Las dos vistas principales tienen versión móvil.
+Selectores para pruebas: Las pruebas E2E utilizan roles accesibles y data-testid cuando es necesario para evitar depender de clases CSS o de la estructura interna del DOM.
 
-**Técnicas**
+13. Estados contemplados
+La interfaz contempla diferentes estados para proporcionar información clara al usuario:
 
-<!-- TODO: completar con las decisiones reales del equipo. Sugerencias de qué cubrir, con el "por qué" y el trade-off de cada una:
-- Framework / lenguaje del frontend y del backend
-- Persistencia (base de datos, en memoria, archivo)
-- Cómo se evita la doble reserva (restricción única, transacción, lock)
-- Manejo de zonas horarias y fechas
-- Validación (cliente y servidor)
-- Estrategia de tests (qué cubre unit y qué cubre E2E)
-- Por qué pnpm y por qué Docker
--->
+Cargando.
 
----
+Cita confirmada.
 
-## 8. Mejoras futuras
+Error de validación.
 
-- **Descarga de reportes (Fase 2):** exportar citas por rango, especialidad y estado (columnas: paciente, email, especialidad, fecha, hora de inicio y fin, estado y fecha de creación).
-- Autenticación y roles (paciente, recepción, administrador).
-- Notificaciones por email al confirmar, reprogramar o cancelar.
-- Varios médicos por especialidad, con horarios y ausencias propios.
-- Duración de cita configurable y horarios de atención por médico.
-- Actualización de disponibilidad en tiempo real (WebSocket o SSE) para reducir los `409`.
-- Internacionalización y manejo de zona horaria del paciente.
-- `TODO` otras deudas técnicas conocidas.
+Horario ocupado.
 
----
+Error de conexión.
 
-## 9. Solución de problemas
+Lista vacía.
 
-| Problema | Qué hacer |
-|---|---|
-| `pnpm: command not found` | Instala pnpm (sección 3). Si usaste Corepack, abre una terminal nueva. |
-| El puerto `TODO` está ocupado | Cierra el proceso que lo usa o cambia el puerto en `TODO archivo`. |
-| `docker compose` no existe | Actualiza Docker o usa `docker-compose` (v1). |
-| Los E2E no encuentran el navegador | Ejecuta `pnpm exec playwright install`. `TODO ajustar a la herramienta real` |
+Error al cancelar.
+
+Error al reagendar.
+
+Especialidad sin médico activo.
+
+Especialidad que ya tiene un médico activo (al registrar o activar un médico).
+
+Médico con citas próximas que no se puede desactivar.
+
+Los mensajes permiten identificar qué ocurrió y, cuando corresponde, ofrecen una acción para intentar nuevamente.
+
+14. Problemas conocidos
+Actualmente pueden existir dependencias entre determinados servicios del proyecto para ejecutar correctamente el entorno local.
+Si el proyecto no inicia correctamente, verificar primero:
+
+node --version
+
+pnpm --version
+
+docker --version
+
+Después comprobar que los archivos .env estén correctamente configurados.
+
+15. Mejoras futuras
+Como posibles mejoras para futuras versiones se consideran:
+
+Autenticación y autorización de usuarios.
+
+Gestión de diferentes roles, como recepción, médico y administrador.
+
+Varios médicos por especialidad, con horarios y ausencias propios.
+
+Notificaciones por correo electrónico o WhatsApp.
+
+Recordatorios automáticos de citas.
+
+Historial médico asociado al paciente.
+
+Integración con calendarios externos.
+
+Mayor cantidad de métricas para el dashboard y exportación de reportes.
+
+Mejoras adicionales de accesibilidad.
+
+Automatización de despliegues y CI/CD.
+
+Ampliación de la cobertura de pruebas E2E.
+
+16. Flujo principal del sistema
+Plaintext
+                    ┌──────────────────┐
+                    │      Inicio      │
+                    └────────┬─────────┘
+                             │
+                             ▼
+                    Seleccionar fecha
+                             │
+                             ▼
+                    Seleccionar horario
+                             │
+                             ▼
+                    Completar formulario
+                             │
+                             ▼
+                       Agendar cita
+                             │
+                   ┌─────────┴─────────┐
+                   │                   │
+                   ▼                   ▼
+             Confirmación        Horario ocupado
+                   │                   │
+                   ▼                   ▼
+                 /citas             Mostrar error
+                   │
+                   ▼
+          Consultar / cancelar
+                   │
+                   ▼
+             Cita cancelada
+17. Verificación desde cero
+Antes de entregar el proyecto, un integrante que no haya participado directamente en la configuración debe realizar una instalación limpia siguiendo únicamente este README:
+
+Bash
+git clone https://github.com/garcia-bj/siam-agenda-medica.git
+cd siam-agenda-medica
+pnpm install
+pnpm dev
+Después debe comprobar que:
+
+La aplicación inicia correctamente.
+
+Puede acceder a la pantalla principal.
+
+Puede agendar una cita.
+
+Puede consultar /citas.
+
+Puede cancelar una cita.
+
+Puede acceder a /medicos y registrar un médico.
+
+Puede acceder a /dashboard.
+
+Las pruebas unitarias funcionan.
+
+Las pruebas E2E funcionan.
+
+18. Estado del proyecto
+El proyecto corresponde a una versión académica/prototipo de SIAM Agenda Médica desarrollada siguiendo una metodología de trabajo basada en historias de usuario y Pull Requests.
+
+El alcance actual se centra en:
+
+Agendamiento de citas.
+
+Gestión de citas.
+
+Gestión de médicos.
+
+Cancelación y reagendamiento.
+
+Filtros.
+
+Dashboard de métricas.
+
+Diseño responsive.
+
+Pruebas automatizadas.
+
+Documentación para ejecución y evaluación.
