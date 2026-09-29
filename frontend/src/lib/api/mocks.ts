@@ -371,5 +371,15 @@ export async function handleMock<T>(path: string, options: RequestInit): Promise
     } as unknown as T;
   }
 
+  if (url.pathname === '/reports/appointments' && method === 'GET') {
+    const format = url.searchParams.get('format') || 'csv';
+    const csvContent = '\uFEFFID,Paciente,Especialidad\n1,Carlos Méndez,Pediatría\n2,Ana Gómez,Cardiología';
+    const blob = new Blob([csvContent], { type: format === 'xlsx' ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'text/csv;charset=utf-8;' });
+    return {
+      blob,
+      filename: `reporte-ejemplo.${format}`,
+    } as unknown as T;
+  }
+
   throw new ApiRequestError(404, 'NOT_FOUND', 'Mock not implemented for this endpoint', []);
 }
