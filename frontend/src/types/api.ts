@@ -7,6 +7,38 @@ export const SPECIALTIES = [
 
 export type Specialty = (typeof SPECIALTIES)[number];
 
+export const SPECIALTY_LABELS: Record<Specialty, string> = {
+  MEDICINA_GENERAL: 'Medicina General',
+  PEDIATRIA: 'Pediatría',
+  CARDIOLOGIA: 'Cardiología',
+  DERMATOLOGIA: 'Dermatología',
+};
+
+export interface Doctor {
+  id: string;
+  name: string;
+  specialty: Specialty;
+  active: boolean;
+  /** Citas ACTIVE de su especialidad desde ahora; 0 si está inactivo. */
+  upcomingAppointments: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DoctorsResponse {
+  data: Doctor[];
+}
+
+export interface CreateDoctorDto {
+  name: string;
+  specialty: Specialty;
+}
+
+export interface UpdateDoctorDto {
+  name?: string;
+  active?: boolean;
+}
+
 export type AppointmentStatus = 'ACTIVE' | 'CANCELLED';
 
 export interface Appointment {
@@ -73,6 +105,8 @@ export type ErrorCode =
   | 'SLOT_TAKEN'
   | 'ALREADY_CANCELLED'
   | 'OUTSIDE_BUSINESS_HOURS'
+  | 'SPECIALTY_HAS_DOCTOR'
+  | 'DOCTOR_HAS_APPOINTMENTS'
   | 'INTERNAL_ERROR';
 
 export interface ApiError {
