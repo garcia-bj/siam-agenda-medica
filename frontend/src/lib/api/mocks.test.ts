@@ -1,7 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { handleMock } from './mocks';
 import { ApiRequestError } from './client';
-import type { Appointment, AppointmentsResponse, AvailabilityResponse } from '@/types/api';
+import type { Appointment, AppointmentsResponse, AvailabilityResponse, Doctor, DoctorsResponse } from '@/types/api';
 
 const FUTURE_DATE = '2027-01-15'; // Friday
 
@@ -165,5 +165,66 @@ describe('mocks – GET /availability', () => {
     const res = await handleMock<AvailabilityResponse>(`/availability?date=${saturday}`, { method: 'GET' });
     expect(res.isBusinessDay).toBe(false);
     expect(res.slots).toHaveLength(0);
+  });
+});
+
+describe('mocks – /doctors', () => {
+  // Módulo nuevo en cada test: el estado en memoria no se arrastra entre casos.
+  async function freshMock() {
+    vi.resetModules();
+    return (await import('./mocks')).handleMock;
+  }
+
+  async function doctorOf(mock: typeof handleMock, specialty: string) {
+    const { data } = await mock<DoctorsResponse>('/doctors', { method: 'GET' });
+    return data.find((d) => d.specialty === specialty && d.active)!;
+  }
+
+  it('lists one active doctor per specialty', async () => {
+    const mock = await freshMock();
+    const { data } = await mock<DoctorsResponse>('/doctors', { method: 'GET' });
+    expect(data.filter((d) => d.active).map((d) => d.specialty).sort()).toEqual(
+      ['CARDIOLOGIA', 'DERMATOLOGIA', 'MEDICINA_GENERAL', 'PEDIATRIA'],
+    );
+  });
+
+  it('blocks deactivating a doctor with upcoming appointments (409 DOCTOR_HAS_APPOINTMENTS)', async () => {
+    const mock = await freshMock();
+    await mock<Appointment>('/appointments', {
+      method: 'POST',
+      body: makeDto({ specialty: 'CARDIOLOGIA' }),
+    });
+    const cardio = await doctorOf(mock, 'CARDIOLOGIA');
+    expect(cardio.upcomingAppointments).toBe(1);
+
+    const err = await mock(`/doctors/${cardio.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ active: false }),
+    }).catch((e: unknown) => e);
+    expect((err as ApiRequestError).code).toBe('DOCTOR_HAS_APPOINTMENTS');
+  });
+
+  it('allows one active doctor per specialty (409 SPECIALTY_HAS_DOCTOR)', async () => {
+    const mock = await freshMock();
+    const derma = await doctorOf(mock, 'DERMATOLOGIA');
+
+    const taken = await mock('/doctors', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Dra. Laura Méndez', specialty: 'DERMATOLOGIA' }),
+    }).catch((e: unknown) => e);
+    expect((taken as ApiRequestError).code).toBe('SPECIALTY_HAS_DOCTOR');
+
+    await mock(`/doctors/${derma.id}`, { method: 'PATCH', body: JSON.stringify({ active: false }) });
+    const created = await mock<Doctor>('/doctors', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Dra. Laura Méndez', specialty: 'DERMATOLOGIA' }),
+    });
+    expect(created.active).toBe(true);
+
+    const reactivate = await mock(`/doctors/${derma.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ active: true }),
+    }).catch((e: unknown) => e);
+    expect((reactivate as ApiRequestError).code).toBe('SPECIALTY_HAS_DOCTOR');
   });
 });

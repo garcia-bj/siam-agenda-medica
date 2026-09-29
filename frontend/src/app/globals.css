@@ -14,6 +14,7 @@
   --color-busy: #EDEBE5;
   --color-danger: #B42318;
   --color-danger-dark: #8C1D14;
+  --color-chart-2: #7DD3C7;
   --font-heading: var(--font-heading);
   --font-body: var(--font-body);
 }
@@ -75,6 +76,12 @@
     transition: all 0.2s ease;
   }
   .nav-pill:hover { color: var(--color-ink); }
+  /* Móvil: el menú baja a su propia fila y ocupa todo el ancho. */
+  @media (max-width: 640px) {
+    .header-container { flex-wrap: wrap; gap: 12px; }
+    .nav-pills { width: 100%; justify-content: space-between; gap: 2px; }
+    .nav-pill { padding: 6px 10px; white-space: nowrap; }
+  }
   .nav-pill[aria-current="page"] {
     background: var(--color-surface);
     color: var(--color-primary);
@@ -171,5 +178,267 @@
     border: 1px solid var(--color-line);
     padding: 24px;
     max-width: 100%;
+  }
+
+  /* --- Dashboard --- */
+  .dashboard-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 32px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  .dashboard-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .dashboard-title {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .dashboard-subtitle {
+    margin-top: 4px;
+    font-size: 14px;
+    color: var(--color-muted);
+  }
+
+  /* Date Range Filter */
+  .date-range-filter {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+  }
+  .date-range-tabs {
+    display: flex;
+    background: var(--color-bg);
+    border-radius: 999px;
+    padding: 3px;
+  }
+  .date-range-tab {
+    padding: 6px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-muted);
+    border-radius: 999px;
+    border: none;
+    background: transparent;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+  }
+  .date-range-tab:hover { color: var(--color-ink); }
+  .date-range-tab--active {
+    background: var(--color-primary);
+    color: #fff;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(15, 118, 110, 0.2);
+  }
+  .date-range-custom {
+    display: flex;
+    gap: 8px;
+  }
+  .date-range-custom .field__input {
+    min-width: 130px;
+    font-size: 13px;
+    padding: 6px 10px;
+  }
+
+  /* KPI Grid */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+  @media (max-width: 768px) {
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* KPI Card */
+  .kpi-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 20px;
+    border-radius: 14px;
+    border: 1px solid var(--color-line);
+    background: var(--color-surface);
+    transition: box-shadow 0.2s ease;
+  }
+  .kpi-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  }
+  .kpi-card__icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    flex-shrink: 0;
+  }
+  .kpi-card__content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .kpi-card__label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--color-muted);
+    text-transform: uppercase;
+  }
+  .kpi-card__value {
+    font-family: var(--font-heading), 'Fraunces', serif;
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--color-ink);
+  }
+  .kpi-card__subtitle {
+    font-size: 12px;
+    color: var(--color-muted);
+    margin-top: 2px;
+  }
+
+  /* Highlight variant (primary-dark) */
+  .kpi-card--highlight {
+    background: var(--color-primary-dark);
+    border-color: var(--color-primary-dark);
+  }
+  .kpi-card--highlight .kpi-card__icon {
+    background: rgba(255, 255, 255, 0.15);
+    color: #99F6E4;
+  }
+  .kpi-card--highlight .kpi-card__label {
+    color: #99F6E4;
+  }
+  .kpi-card--highlight .kpi-card__value {
+    color: #ffffff;
+  }
+  .kpi-card--highlight .kpi-card__subtitle {
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  /* Dashboard Card (chart wrappers) */
+  .dashboard-card {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    border-radius: 14px;
+    border: 1px solid var(--color-line);
+    background: var(--color-surface);
+    padding: 24px;
+  }
+  .dashboard-card__header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .dashboard-card__title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--color-ink);
+  }
+  .dashboard-card__desc {
+    font-size: 13px;
+    color: var(--color-muted);
+    width: 100%;
+  }
+  .dashboard-chart {
+    width: 100%;
+  }
+
+  /* Dashboard Grid */
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+  .dashboard-grid--single {
+    grid-template-columns: 1fr;
+  }
+  @media (max-width: 768px) {
+    .dashboard-grid { grid-template-columns: 1fr; }
+  }
+
+  /* Specialty Occupancy */
+  .specialty-occupancy-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .specialty-occupancy-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .specialty-occupancy-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .specialty-occupancy-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+  .specialty-occupancy-stats {
+    font-size: 12px;
+    color: var(--color-muted);
+  }
+  .specialty-occupancy-bar {
+    height: 8px;
+    border-radius: 4px;
+    background: var(--color-primary-soft);
+    overflow: hidden;
+  }
+  .specialty-occupancy-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: var(--color-primary);
+    transition: width 0.5s ease;
+  }
+
+  /* Peak badge */
+  .peak-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: var(--color-primary-soft);
+    color: var(--color-primary-ink);
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  /* Skeleton */
+  .skeleton-box {
+    background: linear-gradient(90deg, var(--color-busy) 25%, var(--color-line) 50%, var(--color-busy) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 6px;
+  }
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+  .kpi-card--skeleton {
+    opacity: 0.7;
+  }
+  .dashboard-card--skeleton {
+    opacity: 0.5;
+    background: var(--color-busy);
   }
 }

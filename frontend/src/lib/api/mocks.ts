@@ -5,6 +5,9 @@ import type {
   Specialty,
   CreateAppointmentDto,
   UpdateAppointmentDto,
+  Doctor,
+  CreateDoctorDto,
+  UpdateDoctorDto,
 } from '@/types/api';
 import { ApiRequestError } from './client';
 
@@ -57,6 +60,49 @@ const appointments: Appointment[] = [
     createdAt: '2026-09-25T08:00:00-04:00',
   }
 ];
+
+type MockDoctor = Omit<Doctor, 'upcomingAppointments'>;
+
+const doctors: MockDoctor[] = [
+  ['Dr. Martín Gutiérrez', 'MEDICINA_GENERAL'],
+  ['Dra. Sofía Arce', 'PEDIATRIA'],
+  ['Dr. Ricardo Salazar', 'CARDIOLOGIA'],
+  ['Dra. Camila Vega', 'DERMATOLOGIA'],
+].map(([name, specialty]) => ({
+  id: randomId(),
+  name,
+  specialty: specialty as Specialty,
+  active: true,
+  createdAt: '2026-09-25T08:00:00-04:00',
+  updatedAt: '2026-09-25T08:00:00-04:00',
+}));
+
+function upcomingFor(doctor: MockDoctor): number {
+  if (!doctor.active) return 0;
+  const now = Date.now();
+  return appointments.filter(
+    (a) =>
+      a.specialty === doctor.specialty &&
+      a.status === 'ACTIVE' &&
+      new Date(a.startTime).getTime() >= now,
+  ).length;
+}
+
+function toDoctor(doctor: MockDoctor): Doctor {
+  return { ...doctor, upcomingAppointments: upcomingFor(doctor) };
+}
+
+function assertSpecialtyFree(specialty: Specialty, excludeId?: string) {
+  const holder = doctors.find((d) => d.active && d.specialty === specialty && d.id !== excludeId);
+  if (holder) {
+    throw new ApiRequestError(
+      409,
+      'SPECIALTY_HAS_DOCTOR',
+      `${SPECIALTY_LABELS[specialty]} ya tiene un médico activo (${holder.name})`,
+      [],
+    );
+  }
+}
 
 function checkSlotTaken(specialty: Specialty, startTime: string, excludeId?: string): boolean {
   return appointments.some(a => 
@@ -180,14 +226,148 @@ export async function handleMock<T>(path: string, options: RequestInit): Promise
     return undefined as unknown as T;
   }
 
+  if (url.pathname === '/doctors' && method === 'GET') {
+    return { data: doctors.map(toDoctor) } as unknown as T;
+  }
+
+  if (url.pathname === '/doctors' && method === 'POST') {
+    const body = JSON.parse(options.body as string) as CreateDoctorDto;
+    assertSpecialtyFree(body.specialty);
+    const now = new Date().toISOString();
+    const doctor: MockDoctor = {
+      id: randomId(),
+      name: body.name.trim(),
+      specialty: body.specialty,
+      active: true,
+      createdAt: now,
+      updatedAt: now,
+    };
+    doctors.push(doctor);
+    return toDoctor(doctor) as unknown as T;
+  }
+
+  if (url.pathname.startsWith('/doctors/') && method === 'PATCH') {
+    const id = url.pathname.split('/')[2];
+    const body = JSON.parse(options.body as string) as UpdateDoctorDto;
+    const doctor = doctors.find((d) => d.id === id);
+    if (!doctor) throw new ApiRequestError(404, 'NOT_FOUND', 'El médico no existe', []);
+
+    if (body.active === false && doctor.active) {
+      const upcoming = upcomingFor(doctor);
+      if (upcoming > 0) {
+        throw new ApiRequestError(
+          409,
+          'DOCTOR_HAS_APPOINTMENTS',
+          `${doctor.name} tiene ${upcoming} ${upcoming === 1 ? 'cita próxima' : 'citas próximas'}`,
+          [],
+        );
+      }
+    }
+    if (body.active === true && !doctor.active) assertSpecialtyFree(doctor.specialty, doctor.id);
+
+    if (body.name !== undefined) doctor.name = body.name.trim();
+    if (body.active !== undefined) doctor.active = body.active;
+    doctor.updatedAt = new Date().toISOString();
+    return toDoctor(doctor) as unknown as T;
+  }
+
   if (url.pathname === '/metrics/summary' && method === 'GET') {
-    // Basic mock for metrics so it doesn't fail
+    const fromParam = url.searchParams.get('from') || '2026-09-28';
+    const toParam = url.searchParams.get('to') || '2026-10-02';
+    const specParam = url.searchParams.get('specialty') as Specialty | null;
+
+    // Count business days in range
+    let businessDays = 0;
+    const cursor = new Date(`${fromParam}T12:00:00`);
+    const end = new Date(`${toParam}T12:00:00`);
+    while (cursor <= end) {
+      const wd = cursor.getDay();
+      if (wd !== 0 && wd !== 6) businessDays++;
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    const specs = specParam ? [specParam] : CLINIC_SPECIALTIES;
+    const capacity = businessDays * 18 * specs.length;
+
+    // Generate realistic mock appointments for the range
+    const mockActive: { specialty: Specialty; date: string; hour: string }[] = [];
+    const mockCancelled: { specialty: Specialty; date: string }[] = [];
+
+    const rangeCursor = new Date(`${fromParam}T12:00:00`);
+    while (rangeCursor <= end) {
+      const wd = rangeCursor.getDay();
+      if (wd !== 0 && wd !== 6) {
+        const dateStr = rangeCursor.toISOString().slice(0, 10);
+        for (const spec of specs) {
+          // Seed-based distribution: more appointments for Medicina General
+          const base = spec === 'MEDICINA_GENERAL' ? 6 : spec === 'PEDIATRIA' ? 5 : spec === 'CARDIOLOGIA' ? 4 : 3;
+          const count = base + (rangeCursor.getDate() % 3) - 1;
+          for (let i = 0; i < count; i++) {
+            const hourIdx = (i * 3 + rangeCursor.getDate()) % HOURS.length;
+            mockActive.push({ specialty: spec, date: dateStr, hour: HOURS[hourIdx] });
+          }
+          // ~1 cancellation every 3 days per specialty
+          if (rangeCursor.getDate() % 3 === 0) {
+            mockCancelled.push({ specialty: spec, date: dateStr });
+          }
+        }
+      }
+      rangeCursor.setDate(rangeCursor.getDate() + 1);
+    }
+
+    const totalActive = mockActive.length;
+    const totalCancelled = mockCancelled.length;
+    const occupancyRate = capacity > 0 ? Math.round((totalActive / capacity) * 1000) / 1000 : 0;
+    const cancellationRate = (totalActive + totalCancelled) > 0
+      ? Math.round((totalCancelled / (totalActive + totalCancelled)) * 1000) / 1000
+      : 0;
+
+    // bySpecialty
+    const bySpecialty = specs.map(spec => {
+      const active = mockActive.filter(a => a.specialty === spec).length;
+      const cancelled = mockCancelled.filter(c => c.specialty === spec).length;
+      const specCapacity = businessDays * 18;
+      return {
+        specialty: spec,
+        active,
+        cancelled,
+        capacity: specCapacity,
+        occupancyRate: specCapacity > 0 ? Math.round((active / specCapacity) * 1000) / 1000 : 0,
+      };
+    });
+
+    // byDay
+    const dayMap = new Map<string, { active: number; cancelled: number }>();
+    for (const a of mockActive) {
+      const entry = dayMap.get(a.date) || { active: 0, cancelled: 0 };
+      entry.active++;
+      dayMap.set(a.date, entry);
+    }
+    for (const c of mockCancelled) {
+      const entry = dayMap.get(c.date) || { active: 0, cancelled: 0 };
+      entry.cancelled++;
+      dayMap.set(c.date, entry);
+    }
+    const byDay = Array.from(dayMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, counts]) => ({ date, ...counts }));
+
+    // byHour
+    const hourMap = new Map<string, number>();
+    for (const a of mockActive) {
+      const h = a.hour.slice(0, 2) + ':00';
+      hourMap.set(h, (hourMap.get(h) || 0) + 1);
+    }
+    const byHour = Array.from(hourMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([hour, active]) => ({ hour, active }));
+
     return {
-      range: { from: '2026-09-28', to: '2026-10-02', businessDays: 5 },
-      totals: { active: 1, cancelled: 0, capacity: 360, occupancyRate: 0.003, cancellationRate: 0 },
-      bySpecialty: [],
-      byDay: [],
-      byHour: []
+      range: { from: fromParam, to: toParam, businessDays },
+      totals: { active: totalActive, cancelled: totalCancelled, capacity, occupancyRate, cancellationRate },
+      bySpecialty,
+      byDay,
+      byHour,
     } as unknown as T;
   }
 

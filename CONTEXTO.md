@@ -35,7 +35,7 @@ seleccionar fecha → agendar → ver la cita en la lista → cancelar.
 
 **Dentro:** 4 especialidades fijas, un médico por especialidad, bloques de 30 min, reservar, listar con filtros, reprogramar, cancelar, prevención de overbooking, validaciones, estados de carga y error, responsive, Docker, un test E2E, README.
 
-**Extra (no lo pide el PRD):** dashboard de métricas (fase 4) y, en una segunda etapa, descarga de reportes en CSV y Excel. No bloquean el flujo principal: si no llegan a tiempo, quedan como mejora futura.
+**Extra (no lo pide el PRD):** dashboard de métricas (fase 4) y, en una segunda etapa, descarga de reportes en CSV y Excel. Después se sumó el **registro de médicos** (PR-23 a PR-26): se registran, editan, desactivan y reactivan, pero sigue habiendo **un solo médico activo por especialidad** y la cita sigue guardando la especialidad, no el médico. No bloquean el flujo principal: si no llegan a tiempo, quedan como mejora futura.
 
 **Fuera:** autenticación, varios médicos por especialidad, varias sucursales, notificaciones por email, pagos, CI/CD, despliegue en la nube.
 
@@ -194,6 +194,17 @@ model Appointment {
   @@index([startTime])
   @@index([specialty, startTime])
 }
+
+model Doctor {
+  id        String   @id @default(uuid())
+  name      String
+  specialty String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([specialty])
+}
 ```
 
 En Prisma 7 la URL de la base no va en el schema: está en `backend/prisma.config.ts`, que también define la carpeta de migraciones y el seed (`tsx prisma/seed.ts`). El cliente se genera en `src/generated/prisma` (no se sube; lo crea el `postinstall` con `prisma generate`) y se conecta con el adaptador `@prisma/adapter-better-sqlite3`.
@@ -204,7 +215,14 @@ En Prisma 7 la URL de la base no va en el schema: está en `backend/prisma.confi
 CREATE UNIQUE INDEX "appointment_active_slot_unique"
 ON "Appointment"("specialty", "startTime")
 WHERE "status" = 'ACTIVE';
+
+-- Un solo médico activo por especialidad
+CREATE UNIQUE INDEX "doctor_active_specialty_unique"
+ON "Doctor"("specialty")
+WHERE "active" = 1;
 ```
+
+No se puede desactivar a un médico con citas `ACTIVE` próximas en su especialidad (409 `DOCTOR_HAS_APPOINTMENTS`): se desactiva y se cuentan las citas en la misma transacción, y si hay alguna se deshace.
 
 | Campo | Regla |
 | --- | --- |

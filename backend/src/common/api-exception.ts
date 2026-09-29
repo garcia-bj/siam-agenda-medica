@@ -6,6 +6,8 @@ export type ErrorCode =
   | 'SLOT_TAKEN'
   | 'ALREADY_CANCELLED'
   | 'OUTSIDE_BUSINESS_HOURS'
+  | 'SPECIALTY_HAS_DOCTOR'
+  | 'DOCTOR_HAS_APPOINTMENTS'
   | 'INTERNAL_ERROR';
 
 export interface ErrorDetail {
