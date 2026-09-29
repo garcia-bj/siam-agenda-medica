@@ -180,7 +180,7 @@ describe('BookingForm', () => {
     expect(await screen.findByText('El email ya está registrado en esta franja')).toBeInTheDocument();
   });
 
-  it('desactiva el botón mientras envía y muestra "Reservando…"', async () => {
+  it('desactiva el botón mientras envía y muestra "Confirmando…"', async () => {
     createMock.mockReturnValue(new Promise(() => {})); // never resolves
     renderForm();
 
@@ -188,7 +188,7 @@ describe('BookingForm', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar cita' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Reservando/ })).toBeDisabled();
+      expect(screen.getByRole('button', { name: /Confirmando/ })).toBeDisabled();
     });
   });
 

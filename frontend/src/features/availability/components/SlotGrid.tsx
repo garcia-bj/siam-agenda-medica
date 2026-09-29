@@ -32,8 +32,8 @@ export default function SlotGrid({ date, specialty, onSelect, selected, currentS
   if (isError) {
     return (
       <div role="alert" className="flex flex-col items-center gap-3 rounded-xl border border-line p-6 text-center">
-        <p className="font-semibold text-ink">No se pudieron cargar los horarios</p>
-        <p className="text-sm text-muted">Revisa tu conexión e inténtalo de nuevo.</p>
+        <p className="font-semibold text-ink">No pudimos cargar los horarios</p>
+        <p className="text-sm text-muted">Revisa tu conexión e intenta de nuevo.</p>
         <button type="button" className="btn btn--secondary" disabled={isFetching} onClick={() => refetch()}>
           Reintentar
         </button>
