@@ -131,7 +131,7 @@ describe('Listar, reprogramar y cancelar citas (e2e)', () => {
     it('422 NO_DOCTOR si la especialidad no tiene médico activo al reprogramar', async () => {
       const { id } = await create();
       const pediaDoc = await prisma.doctor.findFirst({ where: { specialty: 'PEDIATRIA', active: true } });
-      expect(pediaDoc).toBeDefined();
+      expect(pediaDoc).not.toBeNull();
 
       await prisma.doctor.update({ where: { id: pediaDoc!.id }, data: { active: false } });
 

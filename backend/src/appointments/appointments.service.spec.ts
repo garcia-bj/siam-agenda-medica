@@ -23,7 +23,16 @@ function setup(doctorsMap = defaultDoctorsMap) {
   const findUnique = vi.fn();
   const update = vi.fn();
   const updateMany = vi.fn();
-  const prisma = { appointment: { create, findMany, findUnique, update, updateMany } } as unknown as PrismaService;
+  const doctorFindFirst = vi.fn().mockImplementation(({ where }: { where: { specialty: string; active: boolean } }) => {
+    const doc = doctorsMap.get(where.specialty);
+    return Promise.resolve(doc ? { name: doc.name } : null);
+  });
+  const $transaction = vi.fn().mockImplementation((cb: (tx: unknown) => Promise<unknown>) => cb(prisma));
+  const prisma = {
+    appointment: { create, findMany, findUnique, update, updateMany },
+    doctor: { findFirst: doctorFindFirst },
+    $transaction,
+  } as unknown as PrismaService;
   const findActiveBySpecialty = vi.fn().mockImplementation((spec) => {
     if (spec && typeof spec === 'string') {
       const singleMap = new Map();
@@ -34,7 +43,7 @@ function setup(doctorsMap = defaultDoctorsMap) {
   });
   const doctorsService = { findActiveBySpecialty } as unknown as DoctorsService;
   const service = new AppointmentsService(prisma, new ScheduleService(), doctorsService);
-  return { service, create, findMany, findUnique, update, updateMany, doctorsService, findActiveBySpecialty };
+  return { service, create, findMany, findUnique, update, updateMany, doctorFindFirst, doctorsService, findActiveBySpecialty, $transaction };
 }
 
 const row = (data: Record<string, unknown>) => ({
@@ -89,11 +98,12 @@ describe('AppointmentsService.create', () => {
   });
 
   it('422 NO_DOCTOR si la especialidad no tiene médico activo', async () => {
-    const emptyDoctors = new Map();
-    const { service, create } = setup(emptyDoctors);
+    const { service, create, doctorFindFirst, $transaction } = setup(new Map());
 
     await expectApiError(service.create(dto, NOW), 422, 'NO_DOCTOR');
-    expect(create).not.toHaveBeenCalled();
+    expect(create).toHaveBeenCalledTimes(1);
+    expect($transaction).toHaveBeenCalledTimes(1);
+    expect(create.mock.invocationCallOrder[0]).toBeLessThan(doctorFindFirst.mock.invocationCallOrder[0]);
   });
 
   it('acepta un startTime en UTC y lo guarda como el mismo instante', async () => {
@@ -214,7 +224,7 @@ describe('AppointmentsService.reschedule', () => {
   });
 
   it('422 NO_DOCTOR si la especialidad no tiene médico activo al reprogramar', async () => {
-    const { service, findUnique, update } = setup(new Map());
+    const { service, findUnique, update, doctorFindFirst, $transaction } = setup(new Map());
     findUnique.mockResolvedValue(stored());
 
     await expectApiError(
@@ -222,7 +232,9 @@ describe('AppointmentsService.reschedule', () => {
       422,
       'NO_DOCTOR',
     );
-    expect(update).not.toHaveBeenCalled();
+    expect(update).toHaveBeenCalledTimes(1);
+    expect($transaction).toHaveBeenCalledTimes(1);
+    expect(update.mock.invocationCallOrder[0]).toBeLessThan(doctorFindFirst.mock.invocationCallOrder[0]);
   });
 
   it('al mismo horario responde la cita sin escribir en la base', async () => {
