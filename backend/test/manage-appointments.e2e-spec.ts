@@ -47,6 +47,17 @@ describe('Listar, reprogramar y cancelar citas (e2e)', () => {
       expect(res.body.data.map((a: { startTime: string }) => a.startTime)).toEqual([MON_10, TUE_11]);
     });
 
+    it('agrega doctorName con el médico activo actual de la especialidad', async () => {
+      await create({ startTime: MON_10 });
+
+      const res = await http().get('/api/appointments').expect(200);
+
+      expect(res.body.data[0]).toMatchObject({
+        specialty: 'PEDIATRIA',
+        doctorName: 'Dra. Sofía Arce',
+      });
+    });
+
     it('filtra por especialidad, fecha y estado, solos y combinados', async () => {
       await create({ startTime: MON_10 });
       await create({ startTime: MON_10, specialty: 'CARDIOLOGIA' });
@@ -115,6 +126,25 @@ describe('Listar, reprogramar y cancelar citas (e2e)', () => {
       const res = await http().patch(`/api/appointments/${id}`).send({ startTime: '2030-06-22T10:00:00-04:00' }).expect(422);
 
       expect(res.body.code).toBe('OUTSIDE_BUSINESS_HOURS');
+    });
+
+    it('422 NO_DOCTOR si la especialidad no tiene médico activo al reprogramar', async () => {
+      const { id } = await create();
+      const pediaDoc = await prisma.doctor.findFirst({ where: { specialty: 'PEDIATRIA', active: true } });
+      expect(pediaDoc).toBeDefined();
+
+      await prisma.doctor.update({ where: { id: pediaDoc!.id }, data: { active: false } });
+
+      try {
+        const res = await http().patch(`/api/appointments/${id}`).send({ startTime: TUE_11 }).expect(422);
+        expect(res.body).toMatchObject({
+          statusCode: 422,
+          code: 'NO_DOCTOR',
+          message: 'La especialidad Pediatría no tiene un médico activo',
+        });
+      } finally {
+        await prisma.doctor.update({ where: { id: pediaDoc!.id }, data: { active: true } });
+      }
     });
 
     it('409 ALREADY_CANCELLED si la cita está cancelada', async () => {

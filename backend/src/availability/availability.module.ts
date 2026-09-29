@@ -1,3 +1,4 @@
+import { Module } from '@nestjs/common';
 import { DoctorsModule } from '../doctors/doctors.module.js';
 import { ScheduleModule } from '../schedule/schedule.module.js';
 import { AvailabilityController } from './availability.controller.js';
