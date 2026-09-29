@@ -118,6 +118,29 @@ export class AppointmentsService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
+        if (start.toMillis() === current.startTime.getTime()) {
+          const doctor = await tx.doctor.findFirst({
+            where: { specialty: current.specialty, active: true },
+            select: { name: true },
+          });
+
+          if (!doctor) {
+            throw new ApiException(
+              422,
+              'NO_DOCTOR',
+              `La especialidad ${SPECIALTY_LABELS[specialty]} no tiene un médico activo`,
+            );
+          }
+
+          return this.toResponse(current, doctor.name);
+        }
+
+        // `status: 'ACTIVE'` en el where: si otra petición la canceló en el medio, Prisma lanza P2025.
+        const updated = await tx.appointment.update({
+          where: { id, status: 'ACTIVE' },
+          data: { startTime: start.toJSDate(), endTime: new Date(this.scheduleService.calculateEndTime(start)) },
+        });
+
         const doctor = await tx.doctor.findFirst({
           where: { specialty: current.specialty, active: true },
           select: { name: true },
@@ -131,13 +154,6 @@ export class AppointmentsService {
           );
         }
 
-        if (start.toMillis() === current.startTime.getTime()) return this.toResponse(current, doctor.name);
-
-        // `status: 'ACTIVE'` en el where: si otra petición la canceló en el medio, Prisma lanza P2025.
-        const updated = await tx.appointment.update({
-          where: { id, status: 'ACTIVE' },
-          data: { startTime: start.toJSDate(), endTime: new Date(this.scheduleService.calculateEndTime(start)) },
-        });
         return this.toResponse(updated, doctor.name);
       });
     } catch (error) {
