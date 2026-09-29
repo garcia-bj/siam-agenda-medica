@@ -176,6 +176,47 @@ describe('DoctorsService.update', () => {
   });
 });
 
+describe('DoctorsService.findActiveBySpecialty', () => {
+  it('retorna médicos activos indexados por especialidad en una sola consulta sin N+1', async () => {
+    const { service, doctor } = setup();
+    doctor.findMany.mockResolvedValue([
+      { id: 'doc-1', name: 'Dr. Martín Gutiérrez', specialty: 'MEDICINA_GENERAL' },
+      { id: 'doc-2', name: 'Dra. Sofía Arce', specialty: 'PEDIATRIA' },
+    ]);
+
+    const map = await service.findActiveBySpecialty();
+
+    expect(doctor.findMany).toHaveBeenCalledTimes(1);
+    expect(doctor.findMany).toHaveBeenCalledWith({
+      where: { active: true },
+      select: { id: true, name: true, specialty: true },
+    });
+    expect(map.size).toBe(2);
+    expect(map.get('MEDICINA_GENERAL')).toEqual({ id: 'doc-1', name: 'Dr. Martín Gutiérrez' });
+    expect(map.get('PEDIATRIA')).toEqual({ id: 'doc-2', name: 'Dra. Sofía Arce' });
+    expect(map.get('CARDIOLOGIA')).toBeUndefined();
+  });
+
+  it('permite filtrar por especialidad o lista de especialidades', async () => {
+    const { service, doctor } = setup();
+    doctor.findMany.mockResolvedValue([
+      { id: 'doc-2', name: 'Dra. Sofía Arce', specialty: 'PEDIATRIA' },
+    ]);
+
+    await service.findActiveBySpecialty('PEDIATRIA');
+    expect(doctor.findMany).toHaveBeenCalledWith({
+      where: { active: true, specialty: 'PEDIATRIA' },
+      select: { id: true, name: true, specialty: true },
+    });
+
+    await service.findActiveBySpecialty(['PEDIATRIA', 'CARDIOLOGIA']);
+    expect(doctor.findMany).toHaveBeenCalledWith({
+      where: { active: true, specialty: { in: ['PEDIATRIA', 'CARDIOLOGIA'] } },
+      select: { id: true, name: true, specialty: true },
+    });
+  });
+});
+
 function doctor_(name: string, specialty: string, active: boolean) {
   return row({ id: name, name, specialty, active });
 }

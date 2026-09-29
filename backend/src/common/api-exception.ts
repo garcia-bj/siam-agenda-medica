@@ -8,6 +8,7 @@ export type ErrorCode =
   | 'OUTSIDE_BUSINESS_HOURS'
   | 'SPECIALTY_HAS_DOCTOR'
   | 'DOCTOR_HAS_APPOINTMENTS'
+  | 'NO_DOCTOR'
   | 'INTERNAL_ERROR';
 
 export interface ErrorDetail {

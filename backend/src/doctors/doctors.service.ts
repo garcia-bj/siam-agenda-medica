@@ -19,12 +19,45 @@ export interface DoctorResponse {
   updatedAt: string;
 }
 
+export interface ActiveDoctorInfo {
+  id: string;
+  name: string;
+}
+
 @Injectable()
 export class DoctorsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly scheduleService: ScheduleService,
   ) {}
+
+  /**
+   * Obtiene los médicos activos agrupados por especialidad en un Map.
+   * Realiza una sola consulta a la base de datos (sin N+1), reutilizada por disponibilidad y citas.
+   */
+  async findActiveBySpecialty(
+    specialtyOrSpecialties?: Specialty | Specialty[],
+  ): Promise<Map<Specialty, ActiveDoctorInfo>> {
+    const where: Prisma.DoctorWhereInput = { active: true };
+    if (specialtyOrSpecialties) {
+      if (Array.isArray(specialtyOrSpecialties)) {
+        where.specialty = { in: specialtyOrSpecialties };
+      } else {
+        where.specialty = specialtyOrSpecialties;
+      }
+    }
+
+    const doctors = await this.prisma.doctor.findMany({
+      where,
+      select: { id: true, name: true, specialty: true },
+    });
+
+    const map = new Map<Specialty, ActiveDoctorInfo>();
+    for (const doc of doctors) {
+      map.set(doc.specialty as Specialty, { id: doc.id, name: doc.name });
+    }
+    return map;
+  }
 
   /** Todos los médicos, por especialidad y con el activo primero. Una sola consulta de citas para todos. */
   async findAll(now = new Date()): Promise<{ data: DoctorResponse[] }> {
