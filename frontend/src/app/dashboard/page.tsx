@@ -179,7 +179,7 @@ export default function DashboardPage() {
               label="HORA MÁS SOLICITADA"
               value={peak?.hour ?? '—'}
               subtitle={
-                peak ? `${peak.active} citas entre ${peak.hour} y ${nextHour}` : 'Sin datos'
+                peak ? `${peak.active} ${peak.active === 1 ? 'cita' : 'citas'} entre ${peak.hour} y ${nextHour}` : 'Sin datos'
               }
             />
           </div>
