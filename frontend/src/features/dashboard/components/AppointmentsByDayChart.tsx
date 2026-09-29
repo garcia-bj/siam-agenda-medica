@@ -46,7 +46,7 @@ export default function AppointmentsByDayChart({ data }: AppointmentsByDayChartP
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={chartData}
-            margin={{ top: 20, right: 8, bottom: 4, left: -16 }}
+            margin={{ top: 20, right: 8, bottom: 4, left: 8 }}
             role="img"
             aria-label="Gráfico de citas por día"
           >
