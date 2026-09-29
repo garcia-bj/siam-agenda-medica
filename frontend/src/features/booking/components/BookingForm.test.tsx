@@ -187,4 +187,40 @@ describe('BookingForm', () => {
       expect(screen.getByRole('button', { name: /Reservando/ })).toBeDisabled();
     });
   });
+
+  it('muestra el nombre del médico si está disponible', () => {
+    renderForm({ slot: { ...slot, doctor: { id: '1', name: 'Dr. Pedro Paz' } } });
+    expect(screen.getByText('Médico: Dr. Pedro Paz')).toBeInTheDocument();
+  });
+
+  it('no muestra fila de médico si doctor es null', () => {
+    renderForm({ slot: { ...slot, doctor: null } });
+    expect(screen.queryByText(/Médico:/)).not.toBeInTheDocument();
+  });
+
+  it('maneja el error NO_DOCTOR llamando a onNoDoctor', async () => {
+    const onNoDoctor = vi.fn();
+    createMock.mockRejectedValue(
+      new ApiRequestError(422, 'NO_DOCTOR', 'La especialidad no tiene médico activo', []),
+    );
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    );
+
+    render(
+      <BookingForm
+        slot={slot}
+        specialty="PEDIATRIA"
+        onBooked={vi.fn()}
+        onNoDoctor={onNoDoctor}
+      />,
+      { wrapper },
+    );
+
+    fillForm('Ana Torres', 'ana@correo.com');
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar cita' }));
+
+    await waitFor(() => expect(onNoDoctor).toHaveBeenCalledTimes(1));
+  });
 });

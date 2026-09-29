@@ -93,6 +93,9 @@ export default function AppointmentList({
                 Especialidad
               </th>
               <th scope="col" className="px-6 py-3.5">
+                Médico
+              </th>
+              <th scope="col" className="px-6 py-3.5">
                 Fecha
               </th>
               <th scope="col" className="px-6 py-3.5">
@@ -125,6 +128,9 @@ export default function AppointmentList({
                   <td className="px-6 py-4 text-muted">{appt.patientEmail}</td>
                   <td className="px-6 py-4">
                     <SpecialtyTag specialty={appt.specialty} />
+                  </td>
+                  <td className="px-6 py-4 text-ink font-medium">
+                    {appt.doctorName ? appt.doctorName : '—'}
                   </td>
                   <td className="px-6 py-4 text-ink font-medium">
                     {dateFormatted}
@@ -189,6 +195,12 @@ export default function AppointmentList({
                   </div>
                 </div>
                 <SpecialtyTag specialty={appt.specialty} />
+              </div>
+
+              <div className="flex items-center justify-between border-t border-line/60 pt-2.5 text-xs text-muted">
+                <span>
+                  Médico: <strong className="text-ink">{appt.doctorName ? appt.doctorName : '—'}</strong>
+                </span>
               </div>
 
               <div className="flex items-center justify-between border-t border-line/60 pt-2.5 text-xs text-muted">

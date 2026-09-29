@@ -104,4 +104,26 @@ describe('AppointmentList', () => {
     fireEvent.click(rescheduleBtns[0]);
     expect(onReschedule).toHaveBeenCalledWith(mockAppointments[0]);
   });
+
+  it('renders doctor name correctly, or fallback dash if null', () => {
+    const withDoctor: Appointment = {
+      ...mockAppointments[0],
+      id: 'appt-doc',
+      doctorName: 'Dra. María Ruiz',
+    };
+    const withoutDoctor: Appointment = {
+      ...mockAppointments[1],
+      id: 'appt-nodoc',
+      doctorName: null,
+    };
+
+    render(<AppointmentList appointments={[withDoctor, withoutDoctor]} />);
+    
+    // Check doctor is rendered
+    expect(screen.getAllByText('Dra. María Ruiz').length).toBeGreaterThan(0);
+    
+    // Check fallback dash for withoutDoctor
+    const dashes = screen.getAllByText('—');
+    expect(dashes.length).toBeGreaterThan(0);
+  });
 });

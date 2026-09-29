@@ -53,6 +53,7 @@ const appointments: Appointment[] = [
     patientName: 'Carlos Méndez',
     patientEmail: 'carlos@correo.com',
     specialty: 'MEDICINA_GENERAL',
+    doctorName: 'Dr. Martín Gutiérrez',
     startTime: '2026-09-28T10:30:00-04:00',
     endTime: '2026-09-28T11:00:00-04:00',
     status: 'ACTIVE',
@@ -64,15 +65,13 @@ const appointments: Appointment[] = [
 type MockDoctor = Omit<Doctor, 'upcomingAppointments'>;
 
 const doctors: MockDoctor[] = [
-  ['Dr. Martín Gutiérrez', 'MEDICINA_GENERAL'],
-  ['Dra. Sofía Arce', 'PEDIATRIA'],
-  ['Dr. Ricardo Salazar', 'CARDIOLOGIA'],
-  ['Dra. Camila Vega', 'DERMATOLOGIA'],
-].map(([name, specialty]) => ({
+  { name: 'Dr. Martín Gutiérrez', specialty: 'MEDICINA_GENERAL' as Specialty, active: true },
+  { name: 'Dra. Sofía Arce', specialty: 'PEDIATRIA' as Specialty, active: true },
+  { name: 'Dr. Ricardo Salazar', specialty: 'CARDIOLOGIA' as Specialty, active: true },
+  { name: 'Dra. Camila Vega', specialty: 'DERMATOLOGIA' as Specialty, active: false },
+].map((doc) => ({
   id: randomId(),
-  name,
-  specialty: specialty as Specialty,
-  active: true,
+  ...doc,
   createdAt: '2026-09-25T08:00:00-04:00',
   updatedAt: '2026-09-25T08:00:00-04:00',
 }));
@@ -128,12 +127,15 @@ function getAvailability(date: string, specialty?: Specialty): AvailabilityRespo
       const slotTime = new Date(startTime);
       const isPast = slotTime < now;
       const taken = checkSlotTaken(spec, startTime);
+      const doc = doctors.find((d) => d.specialty === spec && d.active);
+      const hasDoctor = !!doc;
       
       slots.push({
         specialty: spec,
+        doctor: doc ? { id: doc.id, name: doc.name } : null,
         startTime,
         endTime: `${date}T${nextHalf(hour)}:00-04:00`,
-        available: !isPast && !taken,
+        available: !isPast && !taken && hasDoctor,
       });
     }
   }
@@ -180,9 +182,11 @@ export async function handleMock<T>(path: string, options: RequestInit): Promise
       throw new ApiRequestError(409, 'SLOT_TAKEN', `El horario ya está ocupado para ${SPECIALTY_LABELS[body.specialty]}`, []);
     }
     const endHour = nextHalf(body.startTime.substring(11, 16));
+    const doc = doctors.find(d => d.specialty === body.specialty && d.active);
     const newAppt: Appointment = {
       id: randomId(),
       ...body,
+      doctorName: doc ? doc.name : null,
       endTime: body.startTime.substring(0, 11) + endHour + body.startTime.substring(16),
       status: 'ACTIVE',
       cancelledAt: null,

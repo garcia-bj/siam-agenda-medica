@@ -184,7 +184,7 @@ describe('mocks – /doctors', () => {
     const mock = await freshMock();
     const { data } = await mock<DoctorsResponse>('/doctors', { method: 'GET' });
     expect(data.filter((d) => d.active).map((d) => d.specialty).sort()).toEqual(
-      ['CARDIOLOGIA', 'DERMATOLOGIA', 'MEDICINA_GENERAL', 'PEDIATRIA'],
+      ['CARDIOLOGIA', 'MEDICINA_GENERAL', 'PEDIATRIA'],
     );
   });
 
@@ -206,22 +206,22 @@ describe('mocks – /doctors', () => {
 
   it('allows one active doctor per specialty (409 SPECIALTY_HAS_DOCTOR)', async () => {
     const mock = await freshMock();
-    const derma = await doctorOf(mock, 'DERMATOLOGIA');
+    const pedi = await doctorOf(mock, 'PEDIATRIA');
 
     const taken = await mock('/doctors', {
       method: 'POST',
-      body: JSON.stringify({ name: 'Dra. Laura Méndez', specialty: 'DERMATOLOGIA' }),
+      body: JSON.stringify({ name: 'Dra. Laura Méndez', specialty: 'PEDIATRIA' }),
     }).catch((e: unknown) => e);
     expect((taken as ApiRequestError).code).toBe('SPECIALTY_HAS_DOCTOR');
 
-    await mock(`/doctors/${derma.id}`, { method: 'PATCH', body: JSON.stringify({ active: false }) });
+    await mock(`/doctors/${pedi.id}`, { method: 'PATCH', body: JSON.stringify({ active: false }) });
     const created = await mock<Doctor>('/doctors', {
       method: 'POST',
-      body: JSON.stringify({ name: 'Dra. Laura Méndez', specialty: 'DERMATOLOGIA' }),
+      body: JSON.stringify({ name: 'Dra. Laura Méndez', specialty: 'PEDIATRIA' }),
     });
     expect(created.active).toBe(true);
 
-    const reactivate = await mock(`/doctors/${derma.id}`, {
+    const reactivate = await mock(`/doctors/${pedi.id}`, {
       method: 'PATCH',
       body: JSON.stringify({ active: true }),
     }).catch((e: unknown) => e);

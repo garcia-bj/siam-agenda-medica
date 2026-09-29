@@ -2,6 +2,8 @@
 
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Spinner from '@/components/ui/Spinner';
@@ -17,9 +19,19 @@ interface BookingFormProps {
   onBooked: () => void;
   /** Called when the server responds with SLOT_TAKEN (409). */
   onSlotTaken?: () => void;
+  /** Called when the server responds with NO_DOCTOR (422). */
+  onNoDoctor?: () => void;
 }
 
-export default function BookingForm({ slot, specialty, onBooked, onSlotTaken }: BookingFormProps) {
+function formatDoctorName(name: string) {
+  if (name.startsWith('Dr. ') || name.startsWith('Dra. ')) {
+    return name;
+  }
+  return `Dr./Dra. ${name}`;
+}
+
+export default function BookingForm({ slot, specialty, onBooked, onSlotTaken, onNoDoctor }: BookingFormProps) {
+  const queryClient = useQueryClient();
   const {
     register,
     handleSubmit,
@@ -54,6 +66,10 @@ export default function BookingForm({ slot, specialty, onBooked, onSlotTaken }: 
                   setError(field, { message: d.message });
                 }
               }
+            } else if (err.code === 'NO_DOCTOR') {
+              toast.error(err.message, { duration: 5000 });
+              queryClient.invalidateQueries({ queryKey: ['availability'] });
+              onNoDoctor?.();
             } else {
               setError('root', { message: err.message });
             }
@@ -67,6 +83,12 @@ export default function BookingForm({ slot, specialty, onBooked, onSlotTaken }: 
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
+      {slot.doctor && (
+        <p className="text-[15px] font-medium text-ink">
+          Médico: {formatDoctorName(slot.doctor.name)}
+        </p>
+      )}
+
       <Input
         label="Nombre del paciente"
         placeholder="Juan Pérez"

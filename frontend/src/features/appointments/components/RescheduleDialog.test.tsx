@@ -39,6 +39,7 @@ const createSlot = (time: string, available: boolean): Slot => ({
   startTime: `${testDate}T${time}:00-04:00`,
   endTime: `${testDate}T${time}:30-04:00`,
   available,
+  doctor: { id: 'd1', name: 'Dr. Test' },
 });
 
 const availabilityData: AvailabilityResponse = {
