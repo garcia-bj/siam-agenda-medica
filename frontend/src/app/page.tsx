@@ -87,6 +87,7 @@ export default function HomePage() {
                 specialty={specialty}
                 onBooked={handleBooked}
                 onSlotTaken={handleSlotTaken}
+                onNoDoctor={() => setSlot(null)}
               />
             </>
           ) : (

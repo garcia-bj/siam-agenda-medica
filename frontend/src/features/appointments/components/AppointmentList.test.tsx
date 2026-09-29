@@ -9,6 +9,7 @@ const mockAppointments: Appointment[] = [
     patientName: 'Carlos Méndez',
     patientEmail: 'carlos@correo.com',
     specialty: 'MEDICINA_GENERAL',
+    doctorName: 'Dr. Martín Gutiérrez',
     startTime: '2026-09-28T10:30:00-04:00',
     endTime: '2026-09-28T11:00:00-04:00',
     status: 'ACTIVE',
@@ -20,6 +21,7 @@ const mockAppointments: Appointment[] = [
     patientName: 'Ana Ruiz',
     patientEmail: 'ana@correo.com',
     specialty: 'PEDIATRIA',
+    doctorName: 'Dra. Sofía Arce',
     startTime: '2026-09-28T11:30:00-04:00',
     endTime: '2026-09-28T12:00:00-04:00',
     status: 'ACTIVE',
@@ -103,5 +105,27 @@ describe('AppointmentList', () => {
 
     fireEvent.click(rescheduleBtns[0]);
     expect(onReschedule).toHaveBeenCalledWith(mockAppointments[0]);
+  });
+
+  it('renders doctor name correctly, or fallback dash if null', () => {
+    const withDoctor: Appointment = {
+      ...mockAppointments[0],
+      id: 'appt-doc',
+      doctorName: 'Dra. María Ruiz',
+    };
+    const withoutDoctor: Appointment = {
+      ...mockAppointments[1],
+      id: 'appt-nodoc',
+      doctorName: null,
+    };
+
+    render(<AppointmentList appointments={[withDoctor, withoutDoctor]} />);
+    
+    // Check doctor is rendered
+    expect(screen.getAllByText('Dra. María Ruiz').length).toBeGreaterThan(0);
+    
+    // Check fallback dash for withoutDoctor
+    const dashes = screen.getAllByText('—');
+    expect(dashes.length).toBeGreaterThan(0);
   });
 });
