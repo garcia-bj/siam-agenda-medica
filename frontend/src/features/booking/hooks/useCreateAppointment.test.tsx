@@ -15,6 +15,7 @@ const appointment: Appointment = {
   patientName: 'Test',
   patientEmail: 'test@test.com',
   specialty: 'PEDIATRIA',
+  doctorName: 'Dra. Sofía Arce',
   startTime: '2026-10-01T09:00:00-04:00',
   endTime: '2026-10-01T09:30:00-04:00',
   status: 'ACTIVE',

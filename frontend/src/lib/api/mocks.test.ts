@@ -184,7 +184,7 @@ describe('mocks – /doctors', () => {
     const mock = await freshMock();
     const { data } = await mock<DoctorsResponse>('/doctors', { method: 'GET' });
     expect(data.filter((d) => d.active).map((d) => d.specialty).sort()).toEqual(
-      ['CARDIOLOGIA', 'MEDICINA_GENERAL', 'PEDIATRIA'],
+      ['CARDIOLOGIA', 'DERMATOLOGIA', 'MEDICINA_GENERAL', 'PEDIATRIA'],
     );
   });
 

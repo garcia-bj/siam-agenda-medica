@@ -68,7 +68,7 @@ const doctors: MockDoctor[] = [
   { name: 'Dr. Martín Gutiérrez', specialty: 'MEDICINA_GENERAL' as Specialty, active: true },
   { name: 'Dra. Sofía Arce', specialty: 'PEDIATRIA' as Specialty, active: true },
   { name: 'Dr. Ricardo Salazar', specialty: 'CARDIOLOGIA' as Specialty, active: true },
-  { name: 'Dra. Camila Vega', specialty: 'DERMATOLOGIA' as Specialty, active: false },
+  { name: 'Dra. Camila Vega', specialty: 'DERMATOLOGIA' as Specialty, active: true },
 ].map((doc) => ({
   id: randomId(),
   ...doc,
@@ -183,10 +183,13 @@ export async function handleMock<T>(path: string, options: RequestInit): Promise
     }
     const endHour = nextHalf(body.startTime.substring(11, 16));
     const doc = doctors.find(d => d.specialty === body.specialty && d.active);
+    if (!doc) {
+      throw new ApiRequestError(422, 'NO_DOCTOR', `La especialidad ${SPECIALTY_LABELS[body.specialty]} no tiene médico activo`, []);
+    }
     const newAppt: Appointment = {
       id: randomId(),
       ...body,
-      doctorName: doc ? doc.name : null,
+      doctorName: doc.name,
       endTime: body.startTime.substring(0, 11) + endHour + body.startTime.substring(16),
       status: 'ACTIVE',
       cancelledAt: null,

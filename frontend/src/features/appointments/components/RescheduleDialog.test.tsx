@@ -27,6 +27,7 @@ const mockAppt: Appointment = {
   patientName: 'Carlos Méndez',
   patientEmail: 'carlos@correo.com',
   specialty: 'MEDICINA_GENERAL',
+  doctorName: 'Dr. Martín Gutiérrez',
   startTime: `${testDate}T10:30:00-04:00`,
   endTime: `${testDate}T11:00:00-04:00`,
   status: 'ACTIVE',

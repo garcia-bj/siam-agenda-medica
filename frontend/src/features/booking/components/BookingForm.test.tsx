@@ -16,6 +16,7 @@ const slot: Slot = {
   startTime: '2026-10-01T09:00:00-04:00',
   endTime: '2026-10-01T09:30:00-04:00',
   available: true,
+  doctor: null,
 };
 
 const appointment: Appointment = {
@@ -23,6 +24,7 @@ const appointment: Appointment = {
   patientName: 'Ana Torres',
   patientEmail: 'ana@correo.com',
   specialty: 'PEDIATRIA',
+  doctorName: 'Dra. Sofía Arce',
   startTime: slot.startTime,
   endTime: slot.endTime,
   status: 'ACTIVE',
@@ -105,6 +107,7 @@ describe('BookingForm', () => {
       startTime: '2026-10-01T11:30:00-04:00',
       endTime: '2026-10-01T12:00:00-04:00',
       available: true,
+      doctor: null,
     };
     createMock.mockResolvedValue({ ...appointment, startTime: laterSlot.startTime, endTime: laterSlot.endTime });
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
