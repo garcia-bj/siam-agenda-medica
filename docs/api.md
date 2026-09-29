@@ -23,6 +23,9 @@
 | GET | `/appointments` | Listar con filtros | 200 | 400 |
 | PATCH | `/appointments/:id` | Reprogramar | 200 | 400, 404, 409, 422 |
 | DELETE | `/appointments/:id` | Cancelar (soft delete) | 204 | 404, 409 |
+| GET | `/doctors` | Listar médicos | 200 | – |
+| POST | `/doctors` | Registrar médico | 201 | 400, 409 |
+| PATCH | `/doctors/:id` | Editar nombre, desactivar o reactivar | 200 | 400, 404, 409 |
 | GET | `/metrics/summary` | Métricas del dashboard | 200 | 400 |
 | GET | `/reports/appointments` | Descargar CSV o Excel | 200 (archivo) | 400 |
 
@@ -42,9 +45,11 @@ Todos los errores, en todos los endpoints (incluida una ruta inexistente), tiene
 | HTTP | `code` | Cuándo |
 | --- | --- | --- |
 | 400 | `VALIDATION_ERROR` | Campos o parámetros faltantes, de más o inválidos. `details` trae uno por campo |
-| 404 | `NOT_FOUND` | La cita no existe, o la ruta no existe |
+| 404 | `NOT_FOUND` | La cita o el médico no existe, o la ruta no existe |
 | 409 | `SLOT_TAKEN` | Ya hay una cita activa en esa especialidad a esa hora |
 | 409 | `ALREADY_CANCELLED` | Reprogramar o cancelar una cita ya cancelada |
+| 409 | `SPECIALTY_HAS_DOCTOR` | Registrar o reactivar un médico en una especialidad que ya tiene uno activo |
+| 409 | `DOCTOR_HAS_APPOINTMENTS` | Desactivar un médico que tiene citas activas próximas en su especialidad |
 | 422 | `OUTSIDE_BUSINESS_HOURS` | Fin de semana, fuera de 09:00–18:00, minutos distintos de 00/30, o fecha/hora pasada |
 | 500 | `INTERNAL_ERROR` | Error inesperado. `message` es genérico; el detalle solo queda en el log del servidor |
 
@@ -181,6 +186,59 @@ Cancelación suave: `status` pasa a `CANCELLED` y se guarda `cancelledAt`. El sl
 Respuesta `204` sin cuerpo.
 
 Errores: `404 NOT_FOUND`, `409 ALREADY_CANCELLED`.
+
+## Objeto `Doctor`
+
+Cada especialidad tiene **como máximo un médico activo** (índice único parcial en la base). Los médicos no se borran: se desactivan, para no perder el historial.
+
+```json
+{
+  "id": "3f1c2a10-0002-4000-8000-000000000002",
+  "name": "Dra. Sofía Arce",
+  "specialty": "PEDIATRIA",
+  "active": true,
+  "upcomingAppointments": 2,
+  "createdAt": "2026-09-28T19:00:00-04:00",
+  "updatedAt": "2026-09-28T19:00:00-04:00"
+}
+```
+
+- `upcomingAppointments`: citas `ACTIVE` de su especialidad con `startTime` desde ahora. Siempre `0` si está inactivo.
+- La migración carga un médico por especialidad (Dr. Martín Gutiérrez, Dra. Sofía Arce, Dr. Ricardo Salazar, Dra. Camila Vega).
+
+## GET /doctors
+
+Respuesta `200`: `{ "data": Doctor[] }`, ordenados por especialidad (Medicina General, Pediatría, Cardiología, Dermatología) y con el activo primero.
+
+## POST /doctors
+
+```json
+{ "name": "Dra. Laura Méndez", "specialty": "DERMATOLOGIA" }
+```
+
+| Campo | Regla |
+| --- | --- |
+| `name` | 2 a 100 caracteres (se recortan espacios) |
+| `specialty` | Una de las 4 especialidades |
+
+Respuesta `201` con el `Doctor` creado (activo).
+
+Errores: `400 VALIDATION_ERROR`, `409 SPECIALTY_HAS_DOCTOR` (el `message` nombra al médico activo: `"Dermatología ya tiene un médico activo (Dra. Camila Vega)"`).
+
+## PATCH /doctors/:id
+
+```json
+{ "name": "Dra. Sofía Arce Rojas", "active": false }
+```
+
+Los dos campos son opcionales. La especialidad no se cambia: para eso se desactiva al médico y se registra otro.
+
+- **Desactivar** (`active: false`) solo si no tiene citas próximas. Las citas pasadas y las canceladas no cuentan.
+- **Reactivar** (`active: true`) solo si su especialidad no tiene otro médico activo.
+
+Respuesta `200` con el `Doctor` actualizado.
+
+Errores: `400 VALIDATION_ERROR`, `404 NOT_FOUND`, `409 DOCTOR_HAS_APPOINTMENTS` (`"No se puede desactivar a Dr. Ricardo Salazar: tiene 1 cita próxima en Cardiología. Cancélalas primero."`), `409 SPECIALTY_HAS_DOCTOR`.
 
 ## GET /metrics/summary
 
