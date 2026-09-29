@@ -730,7 +730,7 @@ docker compose down -v           # detiene y borra la base (el próximo up vuelv
 
 ### Tests end-to-end (Playwright)
 
-Prueban la app completa en un navegador real (front → API → base): agendar, ver en `/citas`, cancelar, reprogramar, el 409 cuando otro toma el horario y la validación del formulario.
+Prueban la app completa en un navegador real (front → API → base): agendar, ver en `/citas`, cancelar, reprogramar, el 409 cuando otro toma el horario, la validación del formulario y los médicos (registrar uno en una especialidad libre y que no se pueda desactivar a uno con citas próximas).
 
 ```bash
 pnpm --filter e2e exec playwright install chromium   # una sola vez: descarga el navegador
