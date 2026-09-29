@@ -15,6 +15,7 @@ interface SlotGridProps {
   columns?: 3 | 6;
 }
 
+
 export default function SlotGrid({ date, specialty, onSelect, selected, currentSlot, columns = 3 }: SlotGridProps) {
   const { data, isPending, isError, refetch, isFetching } = useAvailability(date, specialty);
 
@@ -45,16 +46,41 @@ export default function SlotGrid({ date, specialty, onSelect, selected, currentS
   }
 
   const slots = data.slots.filter((slot) => slot.specialty === specialty);
+  const doc = slots.length > 0 ? slots[0].doctor : null;
+
+  if (!doc) {
+    return (
+      <div className="rounded-xl border border-dashed border-[#E8A765] bg-[#FFF7ED] p-4" aria-live="polite">
+        <p className="text-[15px] font-medium text-[#9A3412]">
+          Esta especialidad no tiene médico disponible
+        </p>
+      </div>
+    );
+  }
+
   const free = slots.filter((slot) => slot.available).length;
+  
   if (free === 0 && !currentSlot) {
-    return <Message title="No quedan horarios libres" description="Prueba con otro día." />;
+    return (
+      <div className="flex flex-col gap-3">
+        <p className="text-[15px] font-medium text-ink">
+          Atiende: {doc.name}
+        </p>
+        <Message title="No quedan horarios libres" description="Prueba con otro día." />
+      </div>
+    );
   }
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-sm font-semibold text-primary-ink" aria-live="polite">
-        {free} {free === 1 ? 'libre' : 'libres'}
-      </p>
+      <div className="flex flex-col gap-0.5">
+        <p className="text-[15px] font-medium text-ink">
+          Atiende: {doc.name}
+        </p>
+        <p className="text-sm font-semibold text-primary-ink" aria-live="polite">
+          {free} {free === 1 ? 'libre' : 'libres'}
+        </p>
+      </div>
       <div className={`grid gap-2.5 ${GRID[columns]}`}>
         {slots.map((slot) => {
           const state = slot.startTime === currentSlot ? 'current' : slot.startTime === selected && slot.available ? 'selected' : slot.available ? 'free' : 'busy';

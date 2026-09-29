@@ -17,6 +17,7 @@ const appointment: Appointment = {
   patientName: 'Carlos Méndez',
   patientEmail: 'carlos@correo.com',
   specialty: 'MEDICINA_GENERAL',
+  doctorName: 'Dr. Martín Gutiérrez',
   startTime: '2026-09-28T11:30:00-04:00',
   endTime: '2026-09-28T12:00:00-04:00',
   status: 'ACTIVE',

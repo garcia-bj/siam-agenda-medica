@@ -10,11 +10,12 @@ import SlotGrid from './SlotGrid';
 vi.mock('@/lib/api/availability', () => ({ fetchAvailability: vi.fn() }));
 const fetchMock = vi.mocked(fetchAvailability);
 
-const slot = (time: string, available: boolean): Slot => ({
+const slot = (time: string, available: boolean, doctorName: string | null = 'Dr. Juan Pérez'): Slot => ({
   specialty: 'PEDIATRIA',
   startTime: `2026-10-01T${time}:00-04:00`,
   endTime: `2026-10-01T${time}:30:00-04:00`,
   available,
+  doctor: doctorName ? { id: '1', name: doctorName } : null,
 });
 const day = (slots: Slot[], isBusinessDay = true): AvailabilityResponse => ({ date: '2026-10-01', isBusinessDay, slots });
 
@@ -93,5 +94,19 @@ describe('SlotGrid', () => {
 
     expect(await screen.findByRole('button', { name: '09:00, libre' })).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('muestra el aviso y no el nombre cuando el doctor es null', async () => {
+    fetchMock.mockResolvedValue(day([slot('09', true, null)]));
+    renderGrid();
+    expect(await screen.findByText('Esta especialidad no tiene médico disponible')).toBeInTheDocument();
+    expect(screen.queryByText(/Atiende:/)).not.toBeInTheDocument();
+    expect(screen.queryAllByRole('button', { name: /libre|ocupado/ })).toHaveLength(0);
+  });
+
+  it('muestra "Atiende: Nombre" cuando el doctor existe', async () => {
+    fetchMock.mockResolvedValue(day([slot('09', true, 'Dr. Juan Pérez')]));
+    renderGrid();
+    expect(await screen.findByText('Atiende: Dr. Juan Pérez')).toBeInTheDocument();
   });
 });

@@ -143,6 +143,30 @@ describe('mocks – PATCH /appointments/:id', () => {
       }
     }
   });
+
+  it('returns 422 NO_DOCTOR when rescheduling to a specialty without an active doctor', async () => {
+    vi.resetModules();
+    const mock = (await import('./mocks')).handleMock;
+
+    const appt = await mock<Appointment>('/appointments', {
+      method: 'POST',
+      body: makeDto({ startTime: '2020-01-15T10:00:00-04:00', specialty: 'DERMATOLOGIA', patientName: 'A' }),
+    });
+
+    const { data } = await mock<DoctorsResponse>('/doctors', { method: 'GET' });
+    const derma = data.find((d) => d.specialty === 'DERMATOLOGIA' && d.active)!;
+
+    await mock(`/doctors/${derma.id}`, { method: 'PATCH', body: JSON.stringify({ active: false }) });
+
+    await expect(mock(`/appointments/${appt.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ startTime: `${FUTURE_DATE}T16:00:00-04:00` }),
+    })).rejects.toMatchObject({
+      statusCode: 422,
+      code: 'NO_DOCTOR',
+      message: 'La especialidad Dermatología no tiene un médico activo'
+    });
+  });
 });
 
 describe('mocks – GET /appointments', () => {
@@ -206,22 +230,22 @@ describe('mocks – /doctors', () => {
 
   it('allows one active doctor per specialty (409 SPECIALTY_HAS_DOCTOR)', async () => {
     const mock = await freshMock();
-    const derma = await doctorOf(mock, 'DERMATOLOGIA');
+    const pedi = await doctorOf(mock, 'PEDIATRIA');
 
     const taken = await mock('/doctors', {
       method: 'POST',
-      body: JSON.stringify({ name: 'Dra. Laura Méndez', specialty: 'DERMATOLOGIA' }),
+      body: JSON.stringify({ name: 'Dra. Laura Méndez', specialty: 'PEDIATRIA' }),
     }).catch((e: unknown) => e);
     expect((taken as ApiRequestError).code).toBe('SPECIALTY_HAS_DOCTOR');
 
-    await mock(`/doctors/${derma.id}`, { method: 'PATCH', body: JSON.stringify({ active: false }) });
+    await mock(`/doctors/${pedi.id}`, { method: 'PATCH', body: JSON.stringify({ active: false }) });
     const created = await mock<Doctor>('/doctors', {
       method: 'POST',
-      body: JSON.stringify({ name: 'Dra. Laura Méndez', specialty: 'DERMATOLOGIA' }),
+      body: JSON.stringify({ name: 'Dra. Laura Méndez', specialty: 'PEDIATRIA' }),
     });
     expect(created.active).toBe(true);
 
-    const reactivate = await mock(`/doctors/${derma.id}`, {
+    const reactivate = await mock(`/doctors/${pedi.id}`, {
       method: 'PATCH',
       body: JSON.stringify({ active: true }),
     }).catch((e: unknown) => e);

@@ -46,7 +46,7 @@ export interface Appointment {
   patientName: string;
   patientEmail: string;
   specialty: Specialty;
-  doctorName?: string | null;
+  doctorName: string | null;
   startTime: string;
   endTime: string;
   status: AppointmentStatus;
@@ -72,7 +72,7 @@ export interface SlotDoctor {
 
 export interface Slot {
   specialty: Specialty;
-  doctor?: SlotDoctor | null;
+  doctor: SlotDoctor | null;
   startTime: string;
   endTime: string;
   available: boolean;

@@ -8,6 +8,7 @@ import type { Appointment, Slot, Specialty } from '@/types/api';
 import BookingForm from './BookingForm';
 
 vi.mock('@/lib/api/appointments', () => ({ createAppointment: vi.fn() }));
+vi.mock('sonner', () => ({ toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn() }) }));
 const createMock = vi.mocked(createAppointment);
 
 const slot: Slot = {
@@ -15,6 +16,7 @@ const slot: Slot = {
   startTime: '2026-10-01T09:00:00-04:00',
   endTime: '2026-10-01T09:30:00-04:00',
   available: true,
+  doctor: null,
 };
 
 const appointment: Appointment = {
@@ -22,6 +24,7 @@ const appointment: Appointment = {
   patientName: 'Ana Torres',
   patientEmail: 'ana@correo.com',
   specialty: 'PEDIATRIA',
+  doctorName: 'Dra. Sofía Arce',
   startTime: slot.startTime,
   endTime: slot.endTime,
   status: 'ACTIVE',
@@ -104,6 +107,7 @@ describe('BookingForm', () => {
       startTime: '2026-10-01T11:30:00-04:00',
       endTime: '2026-10-01T12:00:00-04:00',
       available: true,
+      doctor: null,
     };
     createMock.mockResolvedValue({ ...appointment, startTime: laterSlot.startTime, endTime: laterSlot.endTime });
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -186,5 +190,46 @@ describe('BookingForm', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Reservando/ })).toBeDisabled();
     });
+  });
+
+  it('muestra el nombre del médico si está disponible', () => {
+    renderForm({ slot: { ...slot, doctor: { id: '1', name: 'Dr. Pedro Paz' } } });
+    expect(screen.getByText('Médico: Dr. Pedro Paz')).toBeInTheDocument();
+  });
+
+  it('no muestra fila de médico si doctor es null', () => {
+    renderForm({ slot: { ...slot, doctor: null } });
+    expect(screen.queryByText(/Médico:/)).not.toBeInTheDocument();
+  });
+
+  it('maneja el error NO_DOCTOR: toast, invalidateQueries y onNoDoctor', async () => {
+    const { toast } = await import('sonner');
+    const onNoDoctor = vi.fn();
+
+    createMock.mockRejectedValue(
+      new ApiRequestError(422, 'NO_DOCTOR', 'La especialidad no tiene un médico activo', []),
+    );
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidateSpy = vi.spyOn(client, 'invalidateQueries');
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    );
+
+    render(
+      <BookingForm
+        slot={slot}
+        specialty="PEDIATRIA"
+        onBooked={vi.fn()}
+        onNoDoctor={onNoDoctor}
+      />,
+      { wrapper },
+    );
+
+    fillForm('Ana Torres', 'ana@correo.com');
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar cita' }));
+
+    await waitFor(() => expect(onNoDoctor).toHaveBeenCalledTimes(1));
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['availability'] });
+    expect(toast.error).toHaveBeenCalledWith('La especialidad no tiene un médico activo', { duration: 5000 });
   });
 });
