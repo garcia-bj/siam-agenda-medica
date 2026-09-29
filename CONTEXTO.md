@@ -728,6 +728,22 @@ docker compose down -v           # detiene y borra la base (el próximo up vuelv
 - Las imágenes usan `node:24-bookworm-slim` (Debian, no Alpine: `better-sqlite3` necesita glibc) y pnpm 12 instalado con npm.
 - El front en Docker usa la API real (`NEXT_PUBLIC_USE_MOCKS=false`).
 
+### Tests end-to-end (Playwright)
+
+Prueban la app completa en un navegador real (front → API → base): agendar, ver en `/citas`, cancelar, reprogramar, el 409 cuando otro toma el horario, la validación del formulario y los médicos (registrar uno en una especialidad libre y que no se pueda desactivar a uno con citas próximas).
+
+```bash
+pnpm --filter e2e exec playwright install chromium   # una sola vez: descarga el navegador
+pnpm test:e2e                                        # levanta API y front, corre los tests y apaga
+pnpm --filter e2e report                             # informe HTML (trazas y video de los que fallan)
+```
+
+- Playwright levanta todo solo, en los puertos 3300 (front) y 3301 (API), con una **base SQLite nueva en cada corrida** y el front sin mocks. No hace falta tener nada corriendo, ni choca con `pnpm dev`.
+- Para correrlos contra algo ya levantado, por ejemplo Docker: `E2E_BASE_URL=http://localhost:3000 E2E_API_URL=http://localhost:3001/api pnpm test:e2e`.
+- Los tests buscan los elementos por su rol y nombre accesible (`getByRole('button', { name: 'Confirmar cita' })`): si cambia un texto o un `aria-label` de la UI, hay que actualizar el test.
+- Las capturas de cada paso quedan en `e2e/capturas/`.
+- No confundir con `pnpm --filter backend test:e2e`, que son los tests de la API con Supertest.
+
 ### Día a día (todos)
 
 ```bash
