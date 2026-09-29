@@ -426,7 +426,7 @@ frontend/src/
 
 Los modales no son rutas: se abren con estado dentro de `/citas`.
 
-Variables del front (`frontend/.env.example`): `NEXT_PUBLIC_API_URL=http://localhost:3001/api` y `NEXT_PUBLIC_USE_MOCKS=true`.
+Variables del front (`frontend/.env.example`): `NEXT_PUBLIC_API_URL=http://localhost:3001/api` y `NEXT_PUBLIC_USE_MOCKS=false` (API real). Con `true` el front usa datos simulados sin backend; sirvió para maquetar antes de tener la API.
 
 ### Tema visual (de los mockups)
 

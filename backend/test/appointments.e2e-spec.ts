@@ -35,17 +35,36 @@ describe('POST /api/appointments (e2e)', () => {
 
   const post = (data: object) => request(app.getHttpServer()).post('/api/appointments').send(data);
 
-  it('201: crea la cita con endTime +30 min y fechas en hora de La Paz', async () => {
+  it('201: crea la cita con endTime +30 min, doctorName y fechas en hora de La Paz', async () => {
     const res = await post(body).expect(201);
 
     expect(res.body).toMatchObject({
       ...body,
+      doctorName: 'Dra. Sofía Arce',
       endTime: '2030-06-17T10:30:00-04:00',
       status: 'ACTIVE',
       cancelledAt: null,
     });
     expect(res.body.id).toEqual(expect.any(String));
     expect(res.body.createdAt).toMatch(/-04:00$/);
+  });
+
+  it('422 NO_DOCTOR si se intenta reservar en especialidad sin médico activo', async () => {
+    const dermDoc = await prisma.doctor.findFirst({ where: { specialty: 'DERMATOLOGIA', active: true } });
+    expect(dermDoc).toBeDefined();
+
+    await prisma.doctor.update({ where: { id: dermDoc!.id }, data: { active: false } });
+
+    try {
+      const res = await post({ ...body, specialty: 'DERMATOLOGIA' }).expect(422);
+      expect(res.body).toMatchObject({
+        statusCode: 422,
+        code: 'NO_DOCTOR',
+        message: 'La especialidad Dermatología no tiene un médico activo',
+      });
+    } finally {
+      await prisma.doctor.update({ where: { id: dermDoc!.id }, data: { active: true } });
+    }
   });
 
   it('la cita creada ocupa el slot en GET /availability', async () => {

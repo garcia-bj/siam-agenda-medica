@@ -4,7 +4,7 @@
  * These are pure functions — no side effects — so they're easy to unit-test.
  */
 
-import { todayInClinic, weekday, addDays } from '@/features/availability/dates';
+import { todayInClinic, weekday, addDays, formatDayShort } from '@/features/availability/dates';
 
 export interface DateRange {
   from: string;
@@ -38,22 +38,7 @@ export function currentMonthRange(now: Date = new Date()): DateRange {
  * Example: "Lun 28 sep – Vie 2 oct 2026"
  */
 export function formatRange(range: DateRange): string {
-  const shortDay = (ds: string) => {
-    const d = new Date(`${ds}T12:00:00`);
-    const day = d.toLocaleDateString('es', { weekday: 'short', timeZone: 'UTC' });
-    return day.charAt(0).toUpperCase() + day.slice(1).replace('.', '');
-  };
-
-  const monthName = (ds: string) =>
-    new Date(`${ds}T12:00:00`).toLocaleDateString('es', { month: 'short', timeZone: 'UTC' }).replace('.', '');
-
-  const fromD = new Date(`${range.from}T12:00:00`);
-  const toD = new Date(`${range.to}T12:00:00`);
-  const fromMonth = monthName(range.from);
-  const toMonth = monthName(range.to);
-  const toYear = toD.getFullYear();
-
-  return `${shortDay(range.from)} ${fromD.getUTCDate()} ${fromMonth} – ${shortDay(range.to)} ${toD.getUTCDate()} ${toMonth} ${toYear}`;
+  return `${formatDayShort(range.from).slice(0, -5)} – ${formatDayShort(range.to)}`;
 }
 
 /** Compute peak hour from byHour array. Returns the entry with the highest active count. */

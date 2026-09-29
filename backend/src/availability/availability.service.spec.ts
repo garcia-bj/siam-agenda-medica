@@ -1,18 +1,32 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { vi } from 'vitest';
+import { Specialty } from '../common/constants/specialties.js';
 import { PrismaService } from '../database/prisma.service.js';
+import { DoctorsService } from '../doctors/doctors.service.js';
 import { ScheduleService } from '../schedule/schedule.service.js';
 import { AvailabilityService } from './availability.service.js';
 
 describe('AvailabilityService', () => {
   let service: AvailabilityService;
   let prismaMock: { appointment: { findMany: ReturnType<typeof vi.fn> } };
+  let doctorsServiceMock: { findActiveBySpecialty: ReturnType<typeof vi.fn> };
+
+  const defaultDoctorsMap = new Map<Specialty, { id: string; name: string }>([
+    ['MEDICINA_GENERAL', { id: 'doc-1', name: 'Dr. Martín Gutiérrez' }],
+    ['PEDIATRIA', { id: 'doc-2', name: 'Dra. Sofía Arce' }],
+    ['CARDIOLOGIA', { id: 'doc-3', name: 'Dr. Ricardo Salazar' }],
+    ['DERMATOLOGIA', { id: 'doc-4', name: 'Dra. Camila Vega' }],
+  ]);
 
   beforeEach(async () => {
     prismaMock = {
       appointment: {
         findMany: vi.fn().mockResolvedValue([]),
       },
+    };
+
+    doctorsServiceMock = {
+      findActiveBySpecialty: vi.fn().mockResolvedValue(new Map(defaultDoctorsMap)),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -22,6 +36,10 @@ describe('AvailabilityService', () => {
         {
           provide: PrismaService,
           useValue: prismaMock,
+        },
+        {
+          provide: DoctorsService,
+          useValue: doctorsServiceMock,
         },
       ],
     }).compile();
@@ -191,6 +209,57 @@ describe('AvailabilityService', () => {
       expect(slot900?.available).toBe(false);
       expect(slot930?.available).toBe(false);
       expect(slot1000?.available).toBe(true);
+    });
+  });
+
+  describe('Médicos en slots y especialidad sin médico', () => {
+    it('agrega doctor: { id, name } por especialidad en cada slot', async () => {
+      const result = await service.getDay(
+        { date: '2026-09-28', specialty: 'PEDIATRIA' },
+        '2026-09-01T00:00:00-04:00',
+      );
+
+      expect(result.slots).toHaveLength(18);
+      expect(
+        result.slots.every((s) => s.doctor?.name === 'Dra. Sofía Arce' && s.doctor?.id === 'doc-2'),
+      ).toBe(true);
+    });
+
+    it('especialidad sin médico activo → doctor: null y sus slots salen con available: false', async () => {
+      // Pediatría y Cardiología tienen médico, Dermatología no
+      const partialDoctors = new Map<Specialty, { id: string; name: string }>([
+        ['MEDICINA_GENERAL', { id: 'doc-1', name: 'Dr. Martín Gutiérrez' }],
+        ['PEDIATRIA', { id: 'doc-2', name: 'Dra. Sofía Arce' }],
+        ['CARDIOLOGIA', { id: 'doc-3', name: 'Dr. Ricardo Salazar' }],
+      ]);
+      doctorsServiceMock.findActiveBySpecialty.mockResolvedValueOnce(partialDoctors);
+
+      const result = await service.getDay(
+        { date: '2026-09-28' },
+        '2026-09-01T00:00:00-04:00',
+      );
+
+      const dermSlots = result.slots.filter((s) => s.specialty === 'DERMATOLOGIA');
+      expect(dermSlots).toHaveLength(18);
+      expect(dermSlots.every((s) => s.doctor === null)).toBe(true);
+      expect(dermSlots.every((s) => s.available === false)).toBe(true);
+
+      const pediaSlots = result.slots.filter((s) => s.specialty === 'PEDIATRIA');
+      expect(pediaSlots).toHaveLength(18);
+      expect(pediaSlots.every((s) => s.doctor?.name === 'Dra. Sofía Arce')).toBe(true);
+      expect(pediaSlots.every((s) => s.available === true)).toBe(true);
+    });
+
+    it('realiza una sola consulta de médicos por request sin N+1', async () => {
+      await service.getDay({ date: '2026-09-28' }, '2026-09-01T00:00:00-04:00');
+
+      expect(doctorsServiceMock.findActiveBySpecialty).toHaveBeenCalledTimes(1);
+    });
+
+    it('no consulta médicos en fin de semana', async () => {
+      await service.getDay({ date: '2026-09-26' });
+
+      expect(doctorsServiceMock.findActiveBySpecialty).not.toHaveBeenCalled();
     });
   });
 });

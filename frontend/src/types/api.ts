@@ -46,6 +46,7 @@ export interface Appointment {
   patientName: string;
   patientEmail: string;
   specialty: Specialty;
+  doctorName?: string | null;
   startTime: string;
   endTime: string;
   status: AppointmentStatus;
@@ -64,8 +65,14 @@ export interface UpdateAppointmentDto {
   startTime: string;
 }
 
+export interface SlotDoctor {
+  id: string;
+  name: string;
+}
+
 export interface Slot {
   specialty: Specialty;
+  doctor?: SlotDoctor | null;
   startTime: string;
   endTime: string;
   available: boolean;
@@ -107,6 +114,7 @@ export type ErrorCode =
   | 'OUTSIDE_BUSINESS_HOURS'
   | 'SPECIALTY_HAS_DOCTOR'
   | 'DOCTOR_HAS_APPOINTMENTS'
+  | 'NO_DOCTOR'
   | 'INTERNAL_ERROR';
 
 export interface ApiError {
