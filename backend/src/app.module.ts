@@ -6,9 +6,10 @@ import { AppointmentsModule } from './appointments/appointments.module.js';
 import { DatabaseModule } from './database/database.module.js';
 import { MetricsModule } from './metrics/metrics.module.js';
 import { ReportsModule } from './reports/reports.module.js';
+import { DoctorsModule } from './doctors/doctors.module.js';
 
 @Module({
-  imports: [ScheduleModule, AvailabilityModule, AppointmentsModule, DatabaseModule, MetricsModule, ReportsModule],
+  imports: [ScheduleModule, AvailabilityModule, AppointmentsModule, DatabaseModule, MetricsModule, ReportsModule, DoctorsModule],
   controllers: [AppController],
 })
 export class AppModule {}
