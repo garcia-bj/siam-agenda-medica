@@ -26,9 +26,10 @@ seleccionar fecha → agendar → ver la cita en la lista → cancelar.
 | --- | --- | --- |
 | Vista 1 · Agendar cita (`/`) | Paciente o recepcionista | Elegir especialidad, fecha y horario libre, y reservar con nombre y email |
 | Vista 2 · Citas agendadas (`/citas`) | Recepción de la clínica (uso interno) | Ver todas las citas, filtrarlas, cancelarlas o reprogramarlas |
+| Gestión de médicos (`/medicos`) | Recepción o coordinación de la clínica | Registrar, editar, desactivar y reactivar médicos |
 | Dashboard (`/dashboard`) | Recepción o coordinación de la clínica | Ver métricas de la agenda y descargar reportes |
 
-- No hay login ni roles (fuera de alcance). Ambas vistas están abiertas.
+- No hay login ni roles (fuera de alcance). Todas las pantallas están abiertas.
 - Como la Vista 2 muestra las citas de **todos** los pacientes, es un panel interno de recepción, no "mis citas" de un paciente.
 
 ### Alcance
@@ -250,6 +251,9 @@ Base: `http://localhost:3001/api`. Fechas en ISO 8601 con zona (`2026-09-28T09:0
 | GET | `/appointments?specialty=&date=&status=` | Listar (`status`: `ACTIVE` por defecto, `CANCELLED` o `ALL`; orden por hora) | 200 | 400 |
 | PATCH | `/appointments/:id` | Reprogramar (`{ "startTime" }`, misma especialidad) | 200 | 400, 404, 409, 422 |
 | DELETE | `/appointments/:id` | Cancelar (soft delete, guarda `cancelledAt`) | 204 | 404, 409 |
+| GET | `/doctors` | Listar médicos (activos e inactivos) | 200 | – |
+| POST | `/doctors` | Registrar médico | 201 | 400, 409 |
+| PATCH | `/doctors/:id` | Editar nombre, desactivar o reactivar | 200 | 400, 404, 409 |
 | GET | `/metrics/summary?from=&to=&specialty=` | Métricas del rango para el dashboard | 200 | 400 |
 | GET | `/reports/appointments?from=&to=&specialty=&status=&format=` | Descargar reporte CSV o Excel (fase 2) | 200 (archivo) | 400 |
 
@@ -260,12 +264,12 @@ Base: `http://localhost:3001/api`. Fechas en ISO 8601 con zona (`2026-09-28T09:0
   "date": "2026-09-28",
   "isBusinessDay": true,
   "slots": [
-    { "specialty": "PEDIATRIA", "startTime": "2026-09-28T09:00:00-04:00", "endTime": "2026-09-28T09:30:00-04:00", "available": true }
+    { "specialty": "PEDIATRIA", "doctor": { "id": "…", "name": "Dra. Sofía Arce" }, "startTime": "2026-09-28T09:00:00-04:00", "endTime": "2026-09-28T09:30:00-04:00", "available": true }
   ]
 }
 ```
 
-Sábado o domingo: 200 con `isBusinessDay: false` y `slots: []`. Slots pasados: `available: false`. Los slots van ordenados por `startTime` y luego por especialidad.
+Sábado o domingo: 200 con `isBusinessDay: false` y `slots: []`. Slots pasados: `available: false`. Los slots van ordenados por `startTime` y luego por especialidad. Cada slot trae `doctor: { id, name } | null` (el médico activo de esa especialidad; si no hay, `doctor: null` y ese slot sale `available: false`).
 
 `POST /appointments` recibe `{ patientName, patientEmail, specialty, startTime }` y devuelve la cita completa (`id`, campos, `endTime`, `status`, `cancelledAt`, `createdAt`). `GET /appointments` devuelve `{ "data": [ ...citas ] }`.
 
@@ -303,10 +307,13 @@ Sábado o domingo: 200 con `isBusinessDay: false` y `slots: []`. Slots pasados: 
 | HTTP | `code` | Cuándo |
 | --- | --- | --- |
 | 400 | `VALIDATION_ERROR` | Campos faltantes o inválidos (`details` por campo) |
-| 404 | `NOT_FOUND` | La cita no existe |
+| 404 | `NOT_FOUND` | La cita o el médico no existe |
 | 409 | `SLOT_TAKEN` | Slot ya reservado en esa especialidad |
 | 409 | `ALREADY_CANCELLED` | Reprogramar o cancelar una cita cancelada |
+| 409 | `SPECIALTY_HAS_DOCTOR` | Registrar o reactivar un médico en una especialidad que ya tiene uno activo |
+| 409 | `DOCTOR_HAS_APPOINTMENTS` | Desactivar un médico que tiene citas activas próximas en su especialidad |
 | 422 | `OUTSIDE_BUSINESS_HOURS` | Fin de semana, fuera de 09:00–18:00, minutos distintos de 00/30 o fecha pasada |
+| 422 | `NO_DOCTOR` | Agendar o reprogramar en una especialidad sin médico activo |
 | 500 | `INTERNAL_ERROR` | Error inesperado (mensaje genérico; el detalle solo va al log) |
 
 **Tipos del front:** están en `frontend/src/types/api.ts` y tienen que coincidir con `docs/api.md`. Del lado del backend, las especialidades y sus nombres en español están en `backend/src/common/constants/specialties.ts`.
@@ -364,12 +371,16 @@ backend/
 │   │   ├── appointments.module.ts
 │   │   ├── appointments.controller.ts
 │   │   ├── appointments.service.ts
-│   │   ├── appointments.repository.ts
 │   │   ├── appointments.service.spec.ts
 │   │   └── dto/
 │   │       ├── create-appointment.dto.ts
 │   │       ├── update-appointment.dto.ts
 │   │       └── query-appointments.dto.ts
+│   ├── doctors/                      ← PR-23 a PR-26
+│   │   ├── doctors.module.ts
+│   │   ├── doctors.controller.ts
+│   │   ├── doctors.service.ts
+│   │   └── dto/doctor.dto.ts
 │   ├── metrics/                      ← PR-19
 │   │   ├── metrics.module.ts
 │   │   ├── metrics.controller.ts
@@ -393,6 +404,9 @@ backend/
 | `GET /api/appointments` | `AppointmentsController.findAll` | `AppointmentsService.findAll` |
 | `PATCH /api/appointments/:id` | `AppointmentsController.reschedule` | `AppointmentsService.reschedule` |
 | `DELETE /api/appointments/:id` | `AppointmentsController.cancel` | `AppointmentsService.cancel` |
+| `GET /api/doctors` | `DoctorsController.findAll` | `DoctorsService.findAll` |
+| `POST /api/doctors` | `DoctorsController.create` | `DoctorsService.create` |
+| `PATCH /api/doctors/:id` | `DoctorsController.update` | `DoctorsService.update` |
 | `GET /api/metrics/summary` | `MetricsController.summary` | `MetricsService.getSummary` → `ScheduleService.countBusinessDays` |
 | `GET /api/reports/appointments` | `ReportsController.appointments` | `ReportsService.build` (CSV o Excel) |
 
@@ -405,16 +419,18 @@ frontend/src/
 │   ├── providers.tsx           ← QueryClientProvider + Toaster
 │   ├── page.tsx                ← Vista 1 · Agendar cita
 │   ├── citas/page.tsx          ← Vista 2 · Citas agendadas
+│   ├── medicos/page.tsx        ← Gestión de médicos
 │   └── dashboard/page.tsx      ← Dashboard de métricas y reportes
 ├── components/ui/              ← Button, Input, Select, Modal, Spinner, EmptyState, SpecialtyTag
 ├── features/
 │   ├── availability/           ← Front A: DatePicker, DayStrip, SpecialtyPills, SlotGrid, useAvailability
 │   ├── booking/                ← Front A: BookingForm, schema.ts (zod), useCreateAppointment
 │   ├── appointments/           ← Front B: AppointmentList, AppointmentFilters, CancelDialog,
-│   │                              RescheduleDialog, useAppointments, useCancel, useReschedule
+│   │                              RescheduleDialog, useAppointments, useCancelAppointment, useRescheduleAppointment
+│   ├── doctors/                ← DoctorList, DoctorFormDialog, ToggleDoctorDialog, schema.ts, useDoctors
 │   └── dashboard/              ← Front A: DateRangeFilter, KpiCard, AppointmentsByDayChart,
 │                                  SpecialtyOccupancy, PeakHoursChart, ReportDownloadCard, useMetrics
-├── lib/api/                    ← client.ts, availability.ts, appointments.ts, metrics.ts, reports.ts, mocks.ts
+├── lib/api/                    ← client.ts, availability.ts, appointments.ts, doctors.ts, metrics.ts, reports.ts, mocks.ts
 └── types/api.ts
 ```
 
@@ -422,6 +438,7 @@ frontend/src/
 | --- | --- | --- | --- |
 | `/` | `app/page.tsx` | Vista 1 · Agendar cita / Vista 1 · Móvil | `SpecialtyPills`, `DatePicker` (escritorio), `DayStrip` (móvil), `SlotGrid` (3 col), `BookingForm` |
 | `/citas` | `app/citas/page.tsx` | Vista 2 · Citas agendadas / Vista 2 · Móvil | `AppointmentFilters`, `AppointmentList` (tabla / tarjetas), `CancelDialog`, `RescheduleDialog` (`DayStrip` + `SlotGrid` de 6 col) |
+| `/medicos` | `app/medicos/page.tsx` | Gestión de médicos | `DoctorList` (tabla / tarjetas), `DoctorFormDialog`, `ToggleDoctorDialog` |
 | `/dashboard` | `app/dashboard/page.tsx` | Dashboard · Métricas y reportes | `DateRangeFilter`, 4 × `KpiCard`, `AppointmentsByDayChart`, `SpecialtyOccupancy`, `PeakHoursChart`, `ReportDownloadCard` |
 
 Los modales no son rutas: se abren con estado dentro de `/citas`.
@@ -624,7 +641,8 @@ cat > package.json <<'EOF'
     "dev:back": "pnpm --filter backend dev",
     "dev:front": "pnpm --filter frontend dev",
     "lint": "pnpm -r lint",
-    "test": "pnpm --filter backend test"
+    "test": "pnpm --filter backend --filter frontend test",
+    "test:e2e": "pnpm --filter e2e test"
   }
 }
 EOF
