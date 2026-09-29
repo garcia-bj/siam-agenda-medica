@@ -289,5 +289,38 @@ describe('Disponibilidad de slots (e2e)', () => {
       expect(slot930).toBeDefined();
       expect(slot930.available).toBe(true);
     });
+
+    it('agrega doctor: { id, name } por especialidad en la respuesta de disponibilidad', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/availability?date=2030-06-17&specialty=PEDIATRIA')
+        .expect(200);
+
+      expect(res.body.slots).toHaveLength(18);
+      for (const slot of res.body.slots) {
+        expect(slot.doctor).toEqual({
+          id: expect.any(String),
+          name: 'Dra. Sofía Arce',
+        });
+      }
+    });
+
+    it('especialidad sin médico activo → doctor: null y sus slots salen con available: false', async () => {
+      const dermDoc = await prisma.doctor.findFirst({ where: { specialty: 'DERMATOLOGIA', active: true } });
+      expect(dermDoc).toBeDefined();
+
+      await prisma.doctor.update({ where: { id: dermDoc!.id }, data: { active: false } });
+
+      try {
+        const res = await request(app.getHttpServer())
+          .get('/api/availability?date=2030-06-17&specialty=DERMATOLOGIA')
+          .expect(200);
+
+        expect(res.body.slots).toHaveLength(18);
+        expect(res.body.slots.every((s: { doctor: unknown }) => s.doctor === null)).toBe(true);
+        expect(res.body.slots.every((s: { available: boolean }) => s.available === false)).toBe(true);
+      } finally {
+        await prisma.doctor.update({ where: { id: dermDoc!.id }, data: { active: true } });
+      }
+    });
   });
 });

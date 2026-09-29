@@ -3,6 +3,7 @@ import { DateTime } from 'luxon';
 import { ApiException } from '../common/api-exception.js';
 import { SPECIALTY_LABELS, Specialty } from '../common/constants/specialties.js';
 import { PrismaService } from '../database/prisma.service.js';
+import { DoctorsService } from '../doctors/doctors.service.js';
 import { Prisma, type Appointment } from '../generated/prisma/client.js';
 import { ScheduleService } from '../schedule/schedule.service.js';
 import { CreateAppointmentDto } from './dto/create-appointment.dto.js';
@@ -15,6 +16,7 @@ export interface AppointmentResponse {
   patientName: string;
   patientEmail: string;
   specialty: Specialty;
+  doctorName: string | null;
   startTime: string;
   endTime: string;
   status: 'ACTIVE' | 'CANCELLED';
@@ -27,15 +29,27 @@ export class AppointmentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly scheduleService: ScheduleService,
+    private readonly doctorsService: DoctorsService,
   ) {}
 
   /**
    * Reserva una cita. El antioverbooking lo garantiza el índice único parcial de la base:
    * se inserta directo y un P2002 se traduce a 409. Nada de "consultar y luego insertar",
    * porque entre los dos pasos otra petición puede tomar el slot.
+   * Valida que la especialidad tenga un médico activo (422 NO_DOCTOR).
    */
   async create(dto: CreateAppointmentDto, now?: DateTime | Date | string): Promise<AppointmentResponse> {
     const start = this.scheduleService.validateSlot(dto.startTime, now);
+
+    const activeDoctors = await this.doctorsService.findActiveBySpecialty(dto.specialty as Specialty);
+    const doctor = activeDoctors.get(dto.specialty as Specialty);
+    if (!doctor) {
+      throw new ApiException(
+        422,
+        'NO_DOCTOR',
+        `La especialidad ${SPECIALTY_LABELS[dto.specialty as Specialty]} no tiene un médico activo`,
+      );
+    }
 
     try {
       const created = await this.prisma.appointment.create({
@@ -47,13 +61,16 @@ export class AppointmentsService {
           endTime: new Date(this.scheduleService.calculateEndTime(start)),
         },
       });
-      return this.toResponse(created);
+      return this.toResponse(created, doctor.name);
     } catch (error) {
       throw this.translateSlotTaken(error, dto.specialty as Specialty);
     }
   }
 
-  /** Lista por hora. Sin `status` devuelve solo las activas; `date` es el día en CLINIC_TZ. */
+  /**
+   * Lista por hora. Sin `status` devuelve solo las activas; `date` es el día en CLINIC_TZ.
+   * Agrega doctorName del médico activo actual de la especialidad en una sola consulta (sin N+1).
+   */
   async findAll(query: QueryAppointmentsDto): Promise<{ data: AppointmentResponse[] }> {
     const { specialty, date, status = 'ACTIVE' } = query;
     let startTime: { gte: Date; lte: Date } | undefined;
@@ -62,22 +79,44 @@ export class AppointmentsService {
       startTime = { gte: day.startOf('day').toJSDate(), lte: day.endOf('day').toJSDate() };
     }
 
-    const rows = await this.prisma.appointment.findMany({
-      where: {
-        ...(status !== 'ALL' ? { status } : {}),
-        ...(specialty ? { specialty } : {}),
-        ...(startTime ? { startTime } : {}),
-      },
-      orderBy: { startTime: 'asc' },
-    });
-    return { data: rows.map((row) => this.toResponse(row)) };
+    const [rows, activeDoctors] = await Promise.all([
+      this.prisma.appointment.findMany({
+        where: {
+          ...(status !== 'ALL' ? { status } : {}),
+          ...(specialty ? { specialty } : {}),
+          ...(startTime ? { startTime } : {}),
+        },
+        orderBy: { startTime: 'asc' },
+      }),
+      this.doctorsService.findActiveBySpecialty(specialty ? (specialty as Specialty) : undefined),
+    ]);
+
+    return {
+      data: rows.map((row) =>
+        this.toResponse(row, activeDoctors.get(row.specialty as Specialty)?.name ?? null),
+      ),
+    };
   }
 
-  /** Mueve una cita activa a otro horario de la misma especialidad. */
+  /**
+   * Mueve una cita activa a otro horario de la misma especialidad.
+   * Valida que la especialidad tenga un médico activo (422 NO_DOCTOR).
+   */
   async reschedule(id: string, dto: UpdateAppointmentDto, now?: DateTime | Date | string): Promise<AppointmentResponse> {
     const current = await this.findActive(id);
     const start = this.scheduleService.validateSlot(dto.startTime, now);
-    if (start.toMillis() === current.startTime.getTime()) return this.toResponse(current);
+
+    const activeDoctors = await this.doctorsService.findActiveBySpecialty(current.specialty as Specialty);
+    const doctor = activeDoctors.get(current.specialty as Specialty);
+    if (!doctor) {
+      throw new ApiException(
+        422,
+        'NO_DOCTOR',
+        `La especialidad ${SPECIALTY_LABELS[current.specialty as Specialty]} no tiene un médico activo`,
+      );
+    }
+
+    if (start.toMillis() === current.startTime.getTime()) return this.toResponse(current, doctor.name);
 
     try {
       // `status: 'ACTIVE'` en el where: si otra petición la canceló en el medio, Prisma lanza P2025.
@@ -85,7 +124,7 @@ export class AppointmentsService {
         where: { id, status: 'ACTIVE' },
         data: { startTime: start.toJSDate(), endTime: new Date(this.scheduleService.calculateEndTime(start)) },
       });
-      return this.toResponse(updated);
+      return this.toResponse(updated, doctor.name);
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') throw alreadyCancelled();
       throw this.translateSlotTaken(error, current.specialty as Specialty);
@@ -117,7 +156,7 @@ export class AppointmentsService {
     return error;
   }
 
-  toResponse(appointment: Appointment): AppointmentResponse {
+  toResponse(appointment: Appointment, doctorName: string | null = null): AppointmentResponse {
     const iso = (date: Date) =>
       DateTime.fromJSDate(date).setZone(this.scheduleService.clinicTz).toISO({ suppressMilliseconds: true })!;
     return {
@@ -125,6 +164,7 @@ export class AppointmentsService {
       patientName: appointment.patientName,
       patientEmail: appointment.patientEmail,
       specialty: appointment.specialty as Specialty,
+      doctorName,
       startTime: iso(appointment.startTime),
       endTime: iso(appointment.endTime),
       status: appointment.status as AppointmentResponse['status'],
