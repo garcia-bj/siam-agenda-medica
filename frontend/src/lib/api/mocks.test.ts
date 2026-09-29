@@ -145,36 +145,27 @@ describe('mocks – PATCH /appointments/:id', () => {
   });
 
   it('returns 422 NO_DOCTOR when rescheduling to a specialty without an active doctor', async () => {
-    // 1. Create a doctor for OFTALMOLOGIA
-    const doc = await handleMock<Doctor>('/doctors', {
+    vi.resetModules();
+    const mock = (await import('./mocks')).handleMock;
+
+    const appt = await mock<Appointment>('/appointments', {
       method: 'POST',
-      body: JSON.stringify({ name: 'Dr. Ojos', specialty: 'OFTALMOLOGIA' }),
+      body: makeDto({ startTime: '2020-01-15T10:00:00-04:00', specialty: 'DERMATOLOGIA', patientName: 'A' }),
     });
 
-    // 2. Create an appointment
-    const appt = await handleMock<Appointment>('/appointments', {
-      method: 'POST',
-      body: makeDto({ startTime: `${FUTURE_DATE}T15:00:00-04:00`, specialty: 'OFTALMOLOGIA', patientName: 'A' }),
+    const { data } = await mock<DoctorsResponse>('/doctors', { method: 'GET' });
+    const derma = data.find((d) => d.specialty === 'DERMATOLOGIA' && d.active)!;
+
+    await mock(`/doctors/${derma.id}`, { method: 'PATCH', body: JSON.stringify({ active: false }) });
+
+    await expect(mock(`/appointments/${appt.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ startTime: `${FUTURE_DATE}T16:00:00-04:00` }),
+    })).rejects.toMatchObject({
+      statusCode: 422,
+      code: 'NO_DOCTOR',
+      message: 'La especialidad Dermatología no tiene un médico activo'
     });
-
-    // 3. Deactivate the doctor
-    await handleMock<Doctor>(`/doctors/${doc.id}`, { method: 'PATCH', body: JSON.stringify({ active: false }) });
-
-    // 4. Try to reschedule
-    try {
-      await handleMock<Appointment>(`/appointments/${appt.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ startTime: `${FUTURE_DATE}T16:00:00-04:00` }),
-      });
-      expect.fail('Should have thrown');
-    } catch (error) {
-      expect(error).toBeInstanceOf(ApiRequestError);
-      if (error instanceof ApiRequestError) {
-        expect(error.statusCode).toBe(422);
-        expect(error.code).toBe('NO_DOCTOR');
-        expect(error.message).toBe('La especialidad Oftalmología no tiene un médico activo');
-      }
-    }
   });
 });
 
