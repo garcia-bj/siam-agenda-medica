@@ -52,7 +52,7 @@ export default function MedicosPage() {
         </div>
       ) : (
         <>
-          <section aria-label="Cobertura por especialidad" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <section aria-label="Cobertura por especialidad" className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             {SPECIALTIES.map((s) => {
               const doc = doctors.find((d) => d.active && d.specialty === s);
               return (
