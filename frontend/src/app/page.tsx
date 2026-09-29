@@ -28,9 +28,23 @@ export default function HomePage() {
     setSlot(null);
   };
 
+  // Qué, cuándo y a qué hora, como en el resumen: "Pediatría · Martes 29 de septiembre · 10:00 – 10:30".
+  const summary = (s: Slot) =>
+    `${SPECIALTY_LABELS[specialty]} · ${formatDayLong(date)} · ${slotTime(s.startTime)} – ${slotTime(s.endTime)}`;
+
+  const chooseSlot = (next: Slot) => {
+    setSlot(next);
+    // En móvil el formulario queda debajo de la grilla: lo traemos a la vista.
+    if (!window.matchMedia('(min-width: 1024px)').matches) {
+      requestAnimationFrame(() =>
+        document.getElementById('summary-title')?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+      );
+    }
+  };
+
   const handleBooked = () => {
     toast.success('Cita confirmada', {
-      description: `${formatDayLong(date)} · ${slotTime(slot!.startTime)} – ${slotTime(slot!.endTime)}`,
+      description: summary(slot!),
       action: { label: 'Ver en Citas', onClick: () => router.push('/citas') },
       duration: 5000,
     });
@@ -38,7 +52,12 @@ export default function HomePage() {
   };
 
   const handleSlotTaken = () => {
-    toast.error('Ese horario acaba de ser tomado', { duration: 5000 });
+    toast.error('Ese horario acaba de ser tomado', {
+      description: slot
+        ? `${SPECIALTY_LABELS[specialty]}, ${formatDayLong(date)} a las ${slotTime(slot.startTime)} ya no está libre. Ya actualizamos la disponibilidad: elige otro horario.`
+        : undefined,
+      duration: 5000,
+    });
     setSlot(null);
   };
 
@@ -69,7 +88,7 @@ export default function HomePage() {
               {formatDayLong(date)} · {SPECIALTY_LABELS[specialty]}
             </p>
           </div>
-          <SlotGrid date={date} specialty={specialty} selected={slot?.startTime} onSelect={setSlot} />
+          <SlotGrid date={date} specialty={specialty} selected={slot?.startTime} onSelect={chooseSlot} />
         </section>
 
         <section aria-labelledby="summary-title" className={CARD}>
@@ -79,7 +98,7 @@ export default function HomePage() {
           {slot ? (
             <>
               <p className="rounded-xl bg-primary-soft px-3.5 py-2.5 font-semibold text-primary-ink">
-                {formatDayLong(date)} · {slotTime(slot.startTime)} – {slotTime(slot.endTime)}
+                {summary(slot)}
               </p>
               <BookingForm
                 key={slot.startTime}

@@ -28,7 +28,7 @@ export default function SpecialtyOccupancy({ data, slotsPerDay }: SpecialtyOccup
       <div className="dashboard-card__header">
         <h3 className="dashboard-card__title">Ocupación por especialidad</h3>
         <p className="dashboard-card__desc">
-          Citas activas sobre {slotsPerDay} horarios disponibles en la semana
+          Citas activas sobre {slotsPerDay} horarios disponibles en el rango
         </p>
       </div>
       <div className="specialty-occupancy-list">
@@ -41,7 +41,7 @@ export default function SpecialtyOccupancy({ data, slotsPerDay }: SpecialtyOccup
                   {SPECIALTY_LABELS[entry.specialty]}
                 </span>
                 <span className="specialty-occupancy-stats">
-                  <strong>{entry.active}</strong> activas · {pct} % · {entry.cancelled} canceladas
+                  <strong>{entry.active}</strong> {entry.active === 1 ? 'activa' : 'activas'} · {pct} % · {entry.cancelled} {entry.cancelled === 1 ? 'cancelada' : 'canceladas'}
                 </span>
               </div>
               <div

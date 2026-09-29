@@ -56,10 +56,10 @@ export default function AppointmentList({
     return (
       <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-line bg-surface py-12 px-4 text-center">
         <EmptyState
-          title={hasActiveFilters ? 'No se encontraron citas' : 'No hay citas agendadas'}
+          title={hasActiveFilters ? 'No hay citas con estos filtros' : 'No hay citas agendadas'}
           description={
             hasActiveFilters
-              ? 'No hay citas activas que coincidan con los filtros seleccionados.'
+              ? 'Prueba con otra especialidad o fecha.'
               : 'Aún no hay citas registradas en la agenda médica.'
           }
         />

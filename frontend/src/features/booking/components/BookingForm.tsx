@@ -107,7 +107,7 @@ export default function BookingForm({ slot, specialty, onBooked, onSlotTaken, on
       )}
 
       <Button type="submit" variant="primary" wide disabled={mutation.isPending}>
-        {mutation.isPending ? <><Spinner size={18} /> Reservando…</> : 'Confirmar cita'}
+        {mutation.isPending ? <><Spinner size={18} /> Confirmando…</> : 'Confirmar cita'}
       </Button>
     </form>
   );
