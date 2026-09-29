@@ -207,7 +207,7 @@ describe('BookingForm', () => {
     const onNoDoctor = vi.fn();
 
     createMock.mockRejectedValue(
-      new ApiRequestError(422, 'NO_DOCTOR', 'La especialidad no tiene médico activo', []),
+      new ApiRequestError(422, 'NO_DOCTOR', 'La especialidad no tiene un médico activo', []),
     );
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const invalidateSpy = vi.spyOn(client, 'invalidateQueries');
@@ -230,6 +230,6 @@ describe('BookingForm', () => {
 
     await waitFor(() => expect(onNoDoctor).toHaveBeenCalledTimes(1));
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['availability'] });
-    expect(toast.error).toHaveBeenCalledWith('La especialidad no tiene médico activo', { duration: 5000 });
+    expect(toast.error).toHaveBeenCalledWith('La especialidad no tiene un médico activo', { duration: 5000 });
   });
 });

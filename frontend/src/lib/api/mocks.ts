@@ -184,7 +184,7 @@ export async function handleMock<T>(path: string, options: RequestInit): Promise
     const endHour = nextHalf(body.startTime.substring(11, 16));
     const doc = doctors.find(d => d.specialty === body.specialty && d.active);
     if (!doc) {
-      throw new ApiRequestError(422, 'NO_DOCTOR', `La especialidad ${SPECIALTY_LABELS[body.specialty]} no tiene médico activo`, []);
+      throw new ApiRequestError(422, 'NO_DOCTOR', `La especialidad ${SPECIALTY_LABELS[body.specialty]} no tiene un médico activo`, []);
     }
     const newAppt: Appointment = {
       id: randomId(),
@@ -210,6 +210,11 @@ export async function handleMock<T>(path: string, options: RequestInit): Promise
     
     if (checkSlotTaken(appt.specialty, body.startTime, id)) {
       throw new ApiRequestError(409, 'SLOT_TAKEN', `El horario ya está ocupado para ${SPECIALTY_LABELS[appt.specialty]}`, []);
+    }
+    
+    const doc = doctors.find(d => d.specialty === appt.specialty && d.active);
+    if (!doc) {
+      throw new ApiRequestError(422, 'NO_DOCTOR', `La especialidad ${SPECIALTY_LABELS[appt.specialty]} no tiene un médico activo`, []);
     }
     
     const endHour = nextHalf(body.startTime.substring(11, 16));
