@@ -51,6 +51,7 @@ Todos los errores, en todos los endpoints (incluida una ruta inexistente), tiene
 | 409 | `SPECIALTY_HAS_DOCTOR` | Registrar o reactivar un médico en una especialidad que ya tiene uno activo |
 | 409 | `DOCTOR_HAS_APPOINTMENTS` | Desactivar un médico que tiene citas activas próximas en su especialidad |
 | 422 | `OUTSIDE_BUSINESS_HOURS` | Fin de semana, fuera de 09:00–18:00, minutos distintos de 00/30, o fecha/hora pasada |
+| 422 | `NO_DOCTOR` | Intentar agendar o reprogramar una cita en una especialidad sin médico activo |
 | 500 | `INTERNAL_ERROR` | Error inesperado. `message` es genérico; el detalle solo queda en el log del servidor |
 
 `details` es un arreglo (vacío si no aplica):
@@ -75,6 +76,7 @@ Todos los errores, en todos los endpoints (incluida una ruta inexistente), tiene
   "patientName": "Ana Pérez",
   "patientEmail": "ana@correo.com",
   "specialty": "PEDIATRIA",
+  "doctorName": "Dra. Sofía Arce",
   "startTime": "2026-09-28T09:00:00-04:00",
   "endTime": "2026-09-28T09:30:00-04:00",
   "status": "ACTIVE",
@@ -82,6 +84,8 @@ Todos los errores, en todos los endpoints (incluida una ruta inexistente), tiene
   "createdAt": "2026-09-25T14:12:03-04:00"
 }
 ```
+
+- `doctorName`: nombre del médico activo actual de la especialidad (`null` si actualmente no hay médico activo).
 
 ---
 
@@ -107,12 +111,14 @@ Respuesta `200`:
   "date": "2026-09-28",
   "isBusinessDay": true,
   "slots": [
-    { "specialty": "MEDICINA_GENERAL", "startTime": "2026-09-28T09:00:00-04:00", "endTime": "2026-09-28T09:30:00-04:00", "available": true },
-    { "specialty": "PEDIATRIA", "startTime": "2026-09-28T09:00:00-04:00", "endTime": "2026-09-28T09:30:00-04:00", "available": false }
+    { "specialty": "MEDICINA_GENERAL", "doctor": { "id": "3f1c2a10-0001-4000-8000-000000000001", "name": "Dr. Martín Gutiérrez" }, "startTime": "2026-09-28T09:00:00-04:00", "endTime": "2026-09-28T09:30:00-04:00", "available": true },
+    { "specialty": "PEDIATRIA", "doctor": { "id": "3f1c2a10-0002-4000-8000-000000000002", "name": "Dra. Sofía Arce" }, "startTime": "2026-09-28T09:00:00-04:00", "endTime": "2026-09-28T09:30:00-04:00", "available": false }
   ]
 }
 ```
 
+- Cada slot incluye `doctor: { id, name } | null` con el médico activo actual de esa especialidad.
+- Especialidad sin médico activo → sus slots salen con `doctor: null` y `available: false`.
 - `slots` va ordenado por `startTime` y, dentro de la misma hora, por especialidad en este orden: `MEDICINA_GENERAL`, `PEDIATRIA`, `CARDIOLOGIA`, `DERMATOLOGIA`.
 - 18 slots con `specialty`, 72 sin ella.
 - Sábado o domingo: `200` con `isBusinessDay: false` y `slots: []`.
@@ -141,9 +147,9 @@ Body:
 
 `endTime` lo calcula el backend (`startTime` + 30 min). Un campo que no está en la tabla responde `400`.
 
-Respuesta `201`: el `Appointment` creado.
+Respuesta `201`: el `Appointment` creado (con `doctorName` del médico activo).
 
-Errores: `400 VALIDATION_ERROR`, `409 SLOT_TAKEN`, `422 OUTSIDE_BUSINESS_HOURS`.
+Errores: `400 VALIDATION_ERROR`, `409 SLOT_TAKEN`, `422 OUTSIDE_BUSINESS_HOURS`, `422 NO_DOCTOR`.
 
 ## GET /appointments
 
@@ -156,10 +162,10 @@ Errores: `400 VALIDATION_ERROR`, `409 SLOT_TAKEN`, `422 OUTSIDE_BUSINESS_HOURS`.
 Respuesta `200`, ordenada por `startTime` ascendente:
 
 ```json
-{ "data": [ { "id": "…", "status": "ACTIVE", "…": "…" } ] }
+{ "data": [ { "id": "…", "status": "ACTIVE", "doctorName": "…", "…": "…" } ] }
 ```
 
-Sin paginación (alcance de la prueba). Errores: `400` si algún filtro es inválido.
+Sin paginación (alcance de la prueba). Cada cita incluye `doctorName` (médico activo actual de la especialidad). Errores: `400` si algún filtro es inválido.
 
 ## PATCH /appointments/:id
 
@@ -175,9 +181,9 @@ Body:
 - Mismas reglas de horario que al crear.
 - Reprogramar al mismo horario que ya tiene responde `200` sin cambios.
 
-Respuesta `200`: el `Appointment` actualizado (con el nuevo `endTime`).
+Respuesta `200`: el `Appointment` actualizado (con el nuevo `endTime` y `doctorName`).
 
-Errores: `400 VALIDATION_ERROR`, `404 NOT_FOUND`, `409 SLOT_TAKEN`, `409 ALREADY_CANCELLED`, `422 OUTSIDE_BUSINESS_HOURS`.
+Errores: `400 VALIDATION_ERROR`, `404 NOT_FOUND`, `409 SLOT_TAKEN`, `409 ALREADY_CANCELLED`, `422 OUTSIDE_BUSINESS_HOURS`, `422 NO_DOCTOR`.
 
 ## DELETE /appointments/:id
 
