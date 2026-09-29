@@ -60,6 +60,11 @@ describe('buildAppointments', () => {
     expect(new Set(appointments.map((a) => a.specialty)).size).toBe(4);
   });
 
+  it('los emails son ASCII, sin tildes (María → maria)', () => {
+    for (const a of appointments) expect(a.patientEmail).toMatch(/^[a-z]+\d+@correo\.com$/);
+    expect(appointments.map((a) => a.patientEmail)).toContain('maria4@correo.com');
+  });
+
   it('da el mismo resultado para la misma fecha', () => {
     expect(buildAppointments(wednesday)).toEqual(appointments);
   });
